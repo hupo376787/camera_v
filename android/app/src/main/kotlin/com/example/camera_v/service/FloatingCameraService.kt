@@ -55,6 +55,7 @@ class FloatingCameraService : Service() {
                 cameraReady = true
             },
         )
+        startForegroundServiceInternal()
         val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             registerReceiver(screenOffReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
@@ -63,7 +64,6 @@ class FloatingCameraService : Service() {
             registerReceiver(screenOffReceiver, filter)
         }
         screenOffReceiverRegistered = true
-        startForegroundServiceInternal()
         startCamera()
         showFloatingBall()
         isRunning = true

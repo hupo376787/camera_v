@@ -69,6 +69,7 @@ class FloatingBallView(
 
             MotionEvent.ACTION_MOVE -> {
                 if (longPressTriggered) {
+                    isDragging = false
                     return true
                 }
                 val dx = (event.rawX - downRawX).toInt()
