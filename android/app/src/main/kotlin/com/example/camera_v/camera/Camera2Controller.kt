@@ -37,7 +37,7 @@ class Camera2Controller(
 
     private val thread = HandlerThread("Camera2Controller").apply { start() }
     private val handler = Handler(thread.looper)
-    private val maxReconnectAttempts = 3
+    private val maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS
 
     fun setLensFacing(facing: Int) {
         synchronized(lock) {
@@ -146,7 +146,7 @@ class Camera2Controller(
                         return
                     }
                     reconnectAttempts += 1
-                    val retryDelayMs = reconnectAttempts * 1000L
+                    val retryDelayMs = reconnectAttempts * RETRY_DELAY_STEP_MS
                     handler.postDelayed({
                         synchronized(lock) {
                             if (cameraDevice == null) {
@@ -205,5 +205,10 @@ class Camera2Controller(
         previewSurface = null
         previewTexture?.release()
         previewTexture = null
+    }
+
+    companion object {
+        private const val DEFAULT_MAX_RECONNECT_ATTEMPTS = 3
+        private const val RETRY_DELAY_STEP_MS = 1000L
     }
 }
