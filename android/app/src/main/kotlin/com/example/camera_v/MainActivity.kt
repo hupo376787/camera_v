@@ -47,6 +47,7 @@ class MainActivity : FlutterActivity() {
                 }
 
                 FloatingCameraService.ACTION_CALLBACK_CLOSE_APP -> {
+                    // This callback must still close the task even if Flutter has not finished initializing.
                     if (!isFinishing) {
                         finishAndRemoveTask()
                     }

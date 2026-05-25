@@ -68,14 +68,14 @@ class FloatingBallView(
             }
 
             MotionEvent.ACTION_MOVE -> {
+                if (longPressTriggered) {
+                    return true
+                }
                 val dx = (event.rawX - downRawX).toInt()
                 val dy = (event.rawY - downRawY).toInt()
                 if (!isDragging && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
                     isDragging = true
                     removeCallbacks(longPressRunnable)
-                }
-                if (longPressTriggered) {
-                    return true
                 }
                 params.x = downX + dx
                 params.y = downY + dy
