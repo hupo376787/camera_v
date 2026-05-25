@@ -31,7 +31,6 @@ class FloatingBallView(
         val icon = ImageView(context).apply {
             setImageResource(android.R.drawable.ic_menu_camera)
             background = context.getDrawable(R.drawable.bg_ball)
-            contentDescription = "悬浮拍照按钮"
             isClickable = true
             isFocusable = true
             setPadding(16, 16, 16, 16)

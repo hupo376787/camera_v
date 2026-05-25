@@ -194,7 +194,7 @@ class MainActivity : FlutterActivity() {
     private fun loadGalleryUris(): List<String> {
         val uris = mutableListOf<String>()
         val projection = arrayOf(MediaStore.Images.Media._ID)
-        // minSdk is 31, so RELATIVE_PATH is always available here.
+        // RELATIVE_PATH was introduced in API 29 and is available because this app targets minSdk 31.
         val selection = "${MediaStore.Images.Media.RELATIVE_PATH} LIKE ?"
         val args = arrayOf("Pictures/CameraV/%")
         val sort = "${MediaStore.Images.Media.DATE_ADDED} DESC"
