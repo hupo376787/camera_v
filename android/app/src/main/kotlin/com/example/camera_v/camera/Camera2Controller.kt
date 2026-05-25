@@ -146,14 +146,14 @@ class Camera2Controller(
                         return
                     }
                     currentReconnectAttempts += 1
-                    val retryDelayMs = currentReconnectAttempts * RETRY_DELAY_STEP_MS
+                    val reconnectDelayMs = currentReconnectAttempts * RETRY_DELAY_STEP_MS
                     handler.postDelayed({
                         synchronized(lock) {
                             if (cameraDevice == null) {
                                 openCameraLocked()
                             }
                         }
-                    }, retryDelayMs)
+                    }, reconnectDelayMs)
                 }
             }
 

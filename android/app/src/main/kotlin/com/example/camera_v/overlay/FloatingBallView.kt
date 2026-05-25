@@ -39,7 +39,7 @@ class FloatingBallView(
         addView(icon)
         isClickable = true
         isFocusable = true
-        contentDescription = "悬浮拍照按钮"
+        contentDescription = context.getString(R.string.floating_ball_content_description)
     }
 
     @SuppressLint("ClickableViewAccessibility")
