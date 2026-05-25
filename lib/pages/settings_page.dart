@@ -39,7 +39,15 @@ class _SettingsPageState extends State<SettingsPage> {
       autoFocus: _autoFocus,
     );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('设置已保存')));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Semantics(
+          liveRegion: true,
+          label: '设置已保存',
+          child: Text('设置已保存'),
+        ),
+      ),
+    );
   }
 
   @override
