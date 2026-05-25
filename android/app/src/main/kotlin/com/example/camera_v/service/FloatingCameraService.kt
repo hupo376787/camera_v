@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.graphics.Color
 import android.hardware.camera2.CameraCharacteristics
@@ -26,6 +27,14 @@ class FloatingCameraService : Service() {
     private var floatingBallView: FloatingBallView? = null
     private var lensFacing = CameraCharacteristics.LENS_FACING_BACK
     private var cameraReady = false
+    private var screenOffReceiverRegistered = false
+    private val screenOffReceiver = object : android.content.BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == Intent.ACTION_SCREEN_OFF) {
+                closeApp()
+            }
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -46,6 +55,14 @@ class FloatingCameraService : Service() {
                 cameraReady = true
             },
         )
+        val filter = IntentFilter(Intent.ACTION_SCREEN_OFF)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(screenOffReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(screenOffReceiver, filter)
+        }
+        screenOffReceiverRegistered = true
         startForegroundServiceInternal()
         startCamera()
         showFloatingBall()
@@ -67,6 +84,10 @@ class FloatingCameraService : Service() {
 
     override fun onDestroy() {
         hideFloatingBall()
+        if (screenOffReceiverRegistered) {
+            unregisterReceiver(screenOffReceiver)
+            screenOffReceiverRegistered = false
+        }
         cameraReady = false
         isRunning = false
         cameraController.stop()
@@ -155,6 +176,7 @@ class FloatingCameraService : Service() {
             windowManager = windowManager,
             params = params,
             onBallClicked = { takePhoto() },
+            onBallLongPressed = { closeApp() },
             onError = { error -> notifyError(error) },
         )
         runCatching {
@@ -180,6 +202,11 @@ class FloatingCameraService : Service() {
     private fun stopSelfSafely() {
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    private fun closeApp() {
+        sendBroadcast(Intent(ACTION_CALLBACK_CLOSE_APP))
+        stopSelfSafely()
     }
 
     private fun notifyPhotoSaved(uri: String) {
@@ -218,6 +245,7 @@ class FloatingCameraService : Service() {
         const val ACTION_CALLBACK_PHOTO_SAVED = "com.example.camera_v.callback.PHOTO_SAVED"
         const val ACTION_CALLBACK_STATUS_CHANGED = "com.example.camera_v.callback.STATUS_CHANGED"
         const val ACTION_CALLBACK_ERROR = "com.example.camera_v.callback.ERROR"
+        const val ACTION_CALLBACK_CLOSE_APP = "com.example.camera_v.callback.CLOSE_APP"
 
         const val EXTRA_URI = "extra_uri"
         const val EXTRA_RUNNING = "extra_running"
