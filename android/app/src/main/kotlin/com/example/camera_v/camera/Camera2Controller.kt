@@ -46,7 +46,7 @@ class Camera2Controller(
         }
     }
 
-    fun start(resolution: Size) {
+    fun start(resolutionPreference: String) {
         synchronized(lock) {
             closeLocked()
             val selected = cameraManager.cameraIdList.firstOrNull { id ->
@@ -59,9 +59,16 @@ class Camera2Controller(
             }
             currentReconnectAttempts = 0
             cameraId = selected
+            val captureSize = selectCaptureSize(
+                cameraManager.getCameraCharacteristics(selected),
+                resolutionPreference,
+            ) ?: run {
+                onError("No supported JPEG capture size found")
+                return
+            }
             imageReader = ImageReader.newInstance(
-                resolution.width,
-                resolution.height,
+                captureSize.width,
+                captureSize.height,
                 ImageFormat.JPEG,
                 2,
             ).apply {
@@ -79,6 +86,36 @@ class Camera2Controller(
             previewSurface = Surface(previewTexture)
             openCameraLocked()
         }
+    }
+
+    private fun selectCaptureSize(
+        characteristics: CameraCharacteristics,
+        resolutionPreference: String,
+    ): Size? {
+        val outputSizes = characteristics
+            .get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+            ?.getOutputSizes(ImageFormat.JPEG)
+            ?.toList()
+            .orEmpty()
+        if (outputSizes.isEmpty()) return null
+
+        val maxSize = outputSizes.maxByOrNull { it.width.toLong() * it.height.toLong() } ?: return null
+        if (resolutionPreference.equals(RESOLUTION_MAX, ignoreCase = true)) {
+            return maxSize
+        }
+
+        val requestedSize = parseResolution(resolutionPreference) ?: return maxSize
+        return outputSizes.firstOrNull { size ->
+            size.width == requestedSize.width && size.height == requestedSize.height
+        } ?: maxSize
+    }
+
+    private fun parseResolution(resolution: String): Size? {
+        val split = resolution.split("x")
+        if (split.size != 2) return null
+        val width = split[0].toIntOrNull() ?: return null
+        val height = split[1].toIntOrNull() ?: return null
+        return Size(width, height)
     }
 
     fun takePhoto(flashEnabled: Boolean, autoFocus: Boolean) {
@@ -218,5 +255,6 @@ class Camera2Controller(
     companion object {
         private const val DEFAULT_MAX_RECONNECT_ATTEMPTS = 3
         private const val RETRY_DELAY_STEP_MS = 1000L
+        private const val RESOLUTION_MAX = "max"
     }
 }

@@ -104,7 +104,7 @@ class CameraBridge {
   static Future<void> switchCamera() => _channel.invokeMethod('switchCamera');
 
   static Future<void> updateSettings({
-    String resolution = '1920x1080',
+    String resolution = 'max',
     bool flashEnabled = false,
     bool autoFocus = true,
   }) {

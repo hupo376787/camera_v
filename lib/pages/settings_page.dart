@@ -10,9 +10,14 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  static const resolutions = ['640x480', '1280x720', '1920x1080'];
+  static const resolutionOptions = {
+    'max': '最高可用分辨率',
+    '640x480': '640x480',
+    '1280x720': '1280x720',
+    '1920x1080': '1920x1080',
+  };
 
-  String _resolution = resolutions.last;
+  String _resolution = 'max';
   bool _flashEnabled = false;
   bool _autoFocus = true;
 
@@ -26,7 +31,8 @@ class _SettingsPageState extends State<SettingsPage> {
     final current = await CameraBridge.getSettings();
     if (!mounted) return;
     setState(() {
-      _resolution = (current['resolution'] as String?) ?? _resolution;
+      final savedResolution = current['resolution'] as String?;
+      _resolution = resolutionOptions.containsKey(savedResolution) ? savedResolution! : _resolution;
       _flashEnabled = (current['flashEnabled'] as bool?) ?? _flashEnabled;
       _autoFocus = (current['autoFocus'] as bool?) ?? _autoFocus;
     });
@@ -56,7 +62,9 @@ class _SettingsPageState extends State<SettingsPage> {
       children: [
         DropdownButtonFormField<String>(
           value: _resolution,
-          items: resolutions.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+          items: resolutionOptions.entries
+              .map((entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value)))
+              .toList(),
           decoration: const InputDecoration(labelText: '分辨率'),
           onChanged: (value) {
             if (value == null) return;

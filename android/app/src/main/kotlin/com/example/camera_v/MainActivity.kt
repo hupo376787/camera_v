@@ -147,10 +147,13 @@ class MainActivity : FlutterActivity() {
                 val args = call.arguments as? Map<*, *> ?: emptyMap<String, Any>()
                 val prefs = getSharedPreferences("floating_camera_prefs", Context.MODE_PRIVATE)
                 prefs.edit()
-                    .putString("resolution", args["resolution"] as? String ?: "1920x1080")
+                    .putString("resolution", args["resolution"] as? String ?: "max")
                     .putBoolean("flashEnabled", args["flashEnabled"] as? Boolean ?: false)
                     .putBoolean("autoFocus", args["autoFocus"] as? Boolean ?: true)
                     .apply()
+                if (isFloatingServiceRunning()) {
+                    startFloatingService(FloatingCameraService.ACTION_REFRESH_SETTINGS)
+                }
                 result.success(null)
             }
 
@@ -158,7 +161,7 @@ class MainActivity : FlutterActivity() {
                 val prefs = getSharedPreferences("floating_camera_prefs", Context.MODE_PRIVATE)
                 result.success(
                     mapOf(
-                        "resolution" to (prefs.getString("resolution", "1920x1080") ?: "1920x1080"),
+                        "resolution" to (prefs.getString("resolution", "max") ?: "max"),
                         "flashEnabled" to prefs.getBoolean("flashEnabled", false),
                         "autoFocus" to prefs.getBoolean("autoFocus", true),
                     ),
