@@ -32,7 +32,6 @@ class FloatingBallView(
     private val longPressRunnable = Runnable {
         if (!isDragging) {
             longPressTriggered = true
-            performLongClick()
             onBallLongPressed.invoke()
         }
     }
@@ -110,11 +109,6 @@ class FloatingBallView(
 
     override fun performClick(): Boolean {
         return super.performClick()
-    }
-
-    override fun performLongClick(): Boolean {
-        super.performLongClick()
-        return true
     }
 
     override fun onDetachedFromWindow() {
