@@ -18,12 +18,14 @@ class FloatingBallView(
     private val windowManager: WindowManager,
     private val params: WindowManager.LayoutParams,
     private val onBallClicked: () -> Unit,
+    private val onError: (String) -> Unit = {},
 ) : FrameLayout(context) {
 
     private var downRawX = 0f
     private var downRawY = 0f
     private var downX = 0
     private var downY = 0
+    private var isDragging = false
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
 
     init {
@@ -31,8 +33,8 @@ class FloatingBallView(
         val icon = ImageView(context).apply {
             setImageResource(android.R.drawable.ic_menu_camera)
             background = context.getDrawable(R.drawable.bg_ball)
-            isClickable = true
-            isFocusable = true
+            isClickable = false
+            isFocusable = false
             setPadding(16, 16, 16, 16)
             layoutParams = LayoutParams(140, 140)
         }
@@ -50,26 +52,33 @@ class FloatingBallView(
                 downRawY = event.rawY
                 downX = params.x
                 downY = params.y
+                isDragging = false
                 return true
             }
 
             MotionEvent.ACTION_MOVE -> {
                 val dx = (event.rawX - downRawX).toInt()
                 val dy = (event.rawY - downRawY).toInt()
+                if (!isDragging && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
+                    isDragging = true
+                }
                 params.x = downX + dx
                 params.y = downY + dy
-                windowManager.updateViewLayout(this, params)
+                updateLayoutSafely()
                 return true
             }
 
             MotionEvent.ACTION_UP -> {
-                val moved = abs(event.rawX - downRawX) > touchSlop || abs(event.rawY - downRawY) > touchSlop
-                if (!moved) {
+                if (!isDragging) {
                     onBallClicked.invoke()
                 } else {
                     snapToEdge()
                 }
                 performClick()
+                return true
+            }
+
+            MotionEvent.ACTION_CANCEL -> {
                 return true
             }
         }
@@ -84,7 +93,15 @@ class FloatingBallView(
         val displayWidth = context.resources.displayMetrics.widthPixels
         val rightEdge = (displayWidth - width).coerceAtLeast(0)
         params.x = if (params.x < displayWidth / 2) 0 else rightEdge
-        windowManager.updateViewLayout(this, params)
+        updateLayoutSafely()
+    }
+
+    private fun updateLayoutSafely() {
+        runCatching {
+            windowManager.updateViewLayout(this, params)
+        }.onFailure { error ->
+            onError("Failed to update floating ball position: ${error.message ?: "unknown error"}")
+        }
     }
 
     companion object {

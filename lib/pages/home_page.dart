@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../main.dart';
 
@@ -18,6 +19,7 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription<bool>? _serviceSub;
   StreamSubscription<String>? _photoSub;
   StreamSubscription<String>? _errorSub;
+  bool _switchBusy = false;
 
   @override
   void initState() {
@@ -35,6 +37,7 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       setState(() => _error = message);
     });
+    _refreshServiceStatus();
   }
 
   @override
@@ -55,13 +58,7 @@ class _HomePageState extends State<HomePage> {
           subtitle: Text(_serviceRunning ? '运行中' : '未运行'),
           trailing: Switch(
             value: _serviceRunning,
-            onChanged: (value) async {
-              if (value) {
-                await CameraBridge.startService();
-              } else {
-                await CameraBridge.stopService();
-              }
-            },
+            onChanged: _switchBusy ? null : _onServiceSwitchChanged,
           ),
         ),
         const SizedBox(height: 12),
@@ -92,5 +89,34 @@ class _HomePageState extends State<HomePage> {
         ],
       ],
     );
+  }
+
+  Future<void> _refreshServiceStatus() async {
+    final running = await CameraBridge.isServiceRunning();
+    if (!mounted) return;
+    setState(() => _serviceRunning = running);
+  }
+
+  Future<void> _onServiceSwitchChanged(bool value) async {
+    setState(() => _switchBusy = true);
+    try {
+      if (value) {
+        await CameraBridge.startService();
+      } else {
+        await CameraBridge.stopService();
+      }
+      await CameraBridge.requestServiceStatus();
+      await _refreshServiceStatus();
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.message ?? error.code;
+      });
+      await _refreshServiceStatus();
+    } finally {
+      if (mounted) {
+        setState(() => _switchBusy = false);
+      }
+    }
   }
 }

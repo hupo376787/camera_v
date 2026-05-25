@@ -1,6 +1,7 @@
 package com.example.camera_v
 
 import android.Manifest
+import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -67,6 +68,7 @@ class MainActivity : FlutterActivity() {
             @Suppress("DEPRECATION")
             registerReceiver(eventReceiver, filter)
         }
+        channel.invokeMethod("onServiceStatusChanged", isFloatingServiceRunning())
     }
 
     override fun onPause() {
@@ -78,32 +80,68 @@ class MainActivity : FlutterActivity() {
         // Flutter only talks through this channel; all camera work stays inside foreground service.
         when (call.method) {
             "startService" -> {
-                if (!ensureCameraPermission()) {
-                    result.error("permission", "Camera permission is required", null)
+                val permissionError = validateStartServicePermissions()
+                if (permissionError != null) {
+                    result.error("permission", permissionError, null)
                     return
                 }
-                startFloatingService(FloatingCameraService.ACTION_START_SERVICE)
+                val started = startFloatingService(FloatingCameraService.ACTION_START_SERVICE)
+                if (started) {
+                    channel.invokeMethod("onServiceStatusChanged", true)
+                    result.success(null)
+                } else {
+                    result.error("service_start_failed", "Failed to start foreground service", null)
+                }
+            }
+
+            "isServiceRunning" -> {
+                result.success(isFloatingServiceRunning())
+            }
+
+            "requestServiceStatus" -> {
+                channel.invokeMethod("onServiceStatusChanged", isFloatingServiceRunning())
                 result.success(null)
             }
 
             "stopService" -> {
-                startFloatingService(FloatingCameraService.ACTION_STOP_SERVICE)
-                result.success(null)
+                val dispatched = startFloatingService(FloatingCameraService.ACTION_STOP_SERVICE)
+                if (dispatched) {
+                    channel.invokeMethod("onServiceStatusChanged", false)
+                    result.success(null)
+                } else {
+                    result.error("service_stop_failed", "Failed to stop foreground service", null)
+                }
             }
 
             "takePhoto" -> {
-                startFloatingService(FloatingCameraService.ACTION_TAKE_PHOTO)
-                result.success(null)
+                val dispatched = startFloatingService(FloatingCameraService.ACTION_TAKE_PHOTO)
+                if (dispatched) {
+                    result.success(null)
+                } else {
+                    result.error("service_command_failed", "Failed to dispatch take photo command", null)
+                }
             }
 
             "toggleFloatingBall" -> {
-                startFloatingService(FloatingCameraService.ACTION_TOGGLE_FLOATING_BALL)
-                result.success(null)
+                val dispatched = startFloatingService(FloatingCameraService.ACTION_TOGGLE_FLOATING_BALL)
+                if (dispatched) {
+                    result.success(null)
+                } else {
+                    result.error(
+                        "service_command_failed",
+                        "Failed to dispatch floating ball toggle command",
+                        null,
+                    )
+                }
             }
 
             "switchCamera" -> {
-                startFloatingService(FloatingCameraService.ACTION_SWITCH_CAMERA)
-                result.success(null)
+                val dispatched = startFloatingService(FloatingCameraService.ACTION_SWITCH_CAMERA)
+                if (dispatched) {
+                    result.success(null)
+                } else {
+                    result.error("service_command_failed", "Failed to dispatch switch camera command", null)
+                }
             }
 
             "updateSettings" -> {
@@ -176,6 +214,22 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    private fun validateStartServicePermissions(): String? {
+        if (!ensureCameraPermission()) {
+            return "Camera permission is required"
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            return "Overlay permission is required"
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            return "Notification permission is required on Android 13+"
+        }
+        return null
+    }
+
     private fun ensureCameraPermission(): Boolean {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED
@@ -186,9 +240,22 @@ class MainActivity : FlutterActivity() {
         return false
     }
 
-    private fun startFloatingService(action: String) {
+    private fun startFloatingService(action: String): Boolean {
         val intent = Intent(this, FloatingCameraService::class.java).setAction(action)
-        ContextCompat.startForegroundService(this, intent)
+        return runCatching {
+            ContextCompat.startForegroundService(this, intent)
+            true
+        }.getOrElse { error ->
+            channel.invokeMethod("onError", "Service command failed: ${error.message ?: action}")
+            false
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun isFloatingServiceRunning(): Boolean {
+        val manager = getSystemService(ActivityManager::class.java) ?: return false
+        return manager.getRunningServices(Int.MAX_VALUE)
+            .any { it.service.className == FloatingCameraService::class.java.name }
     }
 
     private fun loadGalleryUris(): List<String> {

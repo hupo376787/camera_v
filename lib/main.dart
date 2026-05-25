@@ -90,6 +90,13 @@ class CameraBridge {
 
   static Future<void> stopService() => _channel.invokeMethod('stopService');
 
+  static Future<bool> isServiceRunning() async {
+    final result = await _channel.invokeMethod('isServiceRunning');
+    return result == true;
+  }
+
+  static Future<void> requestServiceStatus() => _channel.invokeMethod('requestServiceStatus');
+
   static Future<void> takePhoto() => _channel.invokeMethod('takePhoto');
 
   static Future<void> toggleFloatingBall() => _channel.invokeMethod('toggleFloatingBall');
