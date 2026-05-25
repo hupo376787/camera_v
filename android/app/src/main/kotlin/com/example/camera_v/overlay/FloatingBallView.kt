@@ -2,6 +2,7 @@ package com.example.camera_v.overlay
 
 import android.annotation.SuppressLint
 import android.content.Context
+import android.graphics.Rect
 import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.MotionEvent
@@ -109,7 +110,15 @@ class FloatingBallView(
     }
 
     companion object {
-        fun createLayoutParams(): WindowManager.LayoutParams {
+        private const val DEFAULT_BALL_SIZE_PX = 140
+        private const val EDGE_MARGIN_PX = 32
+
+        fun createLayoutParams(context: Context): WindowManager.LayoutParams {
+            val bounds = context.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds
+            val initialX = (bounds.width() - DEFAULT_BALL_SIZE_PX - EDGE_MARGIN_PX).coerceAtLeast(0)
+            val lowerThirdTop = bounds.height() * 2 / 3
+            val initialY = (lowerThirdTop - (DEFAULT_BALL_SIZE_PX / 2))
+                .coerceIn(0, (bounds.height() - DEFAULT_BALL_SIZE_PX - EDGE_MARGIN_PX).coerceAtLeast(0))
             return WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -119,8 +128,8 @@ class FloatingBallView(
                 PixelFormat.TRANSLUCENT,
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
-                x = 0
-                y = 300
+                x = initialX
+                y = initialY
             }
         }
     }
