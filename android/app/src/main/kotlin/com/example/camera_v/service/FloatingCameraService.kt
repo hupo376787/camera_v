@@ -12,6 +12,7 @@ import android.hardware.camera2.CameraCharacteristics
 import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
+import android.util.Log
 import android.util.Size
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
@@ -25,6 +26,7 @@ class FloatingCameraService : Service() {
     private lateinit var mediaStoreHelper: MediaStoreHelper
     private var floatingBallView: FloatingBallView? = null
     private var lensFacing = CameraCharacteristics.LENS_FACING_BACK
+    private var cameraReady = false
 
     override fun onCreate() {
         super.onCreate()
@@ -41,10 +43,14 @@ class FloatingCameraService : Service() {
                 }
             },
             onError = { message -> notifyError(message) },
+            onReady = {
+                cameraReady = true
+            },
         )
         startForegroundServiceInternal()
         startCamera()
         showFloatingBall()
+        isRunning = true
         notifyStatus(true)
     }
 
@@ -54,13 +60,15 @@ class FloatingCameraService : Service() {
             ACTION_TAKE_PHOTO -> takePhoto()
             ACTION_TOGGLE_FLOATING_BALL -> toggleFloatingBall()
             ACTION_SWITCH_CAMERA -> switchCamera()
-            ACTION_START_SERVICE, null -> Unit
+            ACTION_START_SERVICE, null -> notifyStatus(true)
         }
         return START_STICKY
     }
 
     override fun onDestroy() {
         hideFloatingBall()
+        cameraReady = false
+        isRunning = false
         cameraController.stop()
         notifyStatus(false)
         super.onDestroy()
@@ -99,6 +107,7 @@ class FloatingCameraService : Service() {
     }
 
     private fun startCamera() {
+        cameraReady = false
         val prefs = getSharedPreferences("floating_camera_prefs", Context.MODE_PRIVATE)
         val (width, height) = parseResolution(prefs.getString("resolution", "1920x1080") ?: "1920x1080")
         cameraController.setLensFacing(lensFacing)
@@ -106,6 +115,11 @@ class FloatingCameraService : Service() {
     }
 
     private fun takePhoto() {
+        // Check both callback flag and controller state to avoid early clicks during async camera setup.
+        if (!cameraReady || !cameraController.isReady()) {
+            notifyError("Camera is still initializing, please wait a moment and try again")
+            return
+        }
         val prefs = getSharedPreferences("floating_camera_prefs", Context.MODE_PRIVATE)
         cameraController.takePhoto(
             flashEnabled = prefs.getBoolean("flashEnabled", false),
@@ -133,19 +147,39 @@ class FloatingCameraService : Service() {
     }
 
     private fun showFloatingBall() {
-        if (!Settings.canDrawOverlays(this) || floatingBallView != null) return
+        // Defensive check: system may recreate service outside MainActivity flow.
+        if (!Settings.canDrawOverlays(this)) {
+            notifyError("Overlay permission not granted, cannot show floating ball")
+            return
+        }
+        if (floatingBallView != null) return
         val windowManager = getSystemService(WindowManager::class.java)
         val params = FloatingBallView.createLayoutParams()
         // Floating ball click is user-driven and triggers compliant background capture.
-        floatingBallView = FloatingBallView(this, windowManager, params) {
-            takePhoto()
+        floatingBallView = FloatingBallView(
+            context = this,
+            windowManager = windowManager,
+            params = params,
+            onBallClicked = { takePhoto() },
+            onError = { error -> notifyError(error) },
+        )
+        runCatching {
+            windowManager.addView(floatingBallView, params)
+        }.onFailure { error ->
+            Log.e(TAG, "Adding floating ball failed", error)
+            floatingBallView = null
+            notifyError("Failed to show floating ball: ${formatError(error)}")
         }
-        windowManager.addView(floatingBallView, params)
     }
 
     private fun hideFloatingBall() {
         val windowManager = getSystemService(WindowManager::class.java)
-        floatingBallView?.let(windowManager::removeView)
+        runCatching {
+            floatingBallView?.let(windowManager::removeView)
+        }.onFailure { error ->
+            Log.e(TAG, "Removing floating ball failed", error)
+            notifyError("Failed to hide floating ball: ${formatError(error)}")
+        }
         floatingBallView = null
     }
 
@@ -175,6 +209,10 @@ class FloatingCameraService : Service() {
         )
     }
 
+    private fun formatError(error: Throwable): String {
+        return error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
+    }
+
     companion object {
         const val ACTION_START_SERVICE = "com.example.camera_v.action.START_SERVICE"
         const val ACTION_STOP_SERVICE = "com.example.camera_v.action.STOP_SERVICE"
@@ -189,6 +227,11 @@ class FloatingCameraService : Service() {
         const val EXTRA_URI = "extra_uri"
         const val EXTRA_RUNNING = "extra_running"
         const val EXTRA_ERROR = "extra_error"
+        private const val TAG = "FloatingCameraService"
+        @Volatile
+        private var isRunning = false
+
+        fun isServiceRunning(): Boolean = isRunning
 
         fun buildTakePhotoIntent(context: Context): Intent {
             return Intent(context, FloatingCameraService::class.java).setAction(ACTION_TAKE_PHOTO)

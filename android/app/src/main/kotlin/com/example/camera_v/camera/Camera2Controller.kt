@@ -22,6 +22,7 @@ class Camera2Controller(
     private val context: Context,
     private val onPhotoTaken: (ByteArray) -> Unit,
     private val onError: (String) -> Unit,
+    private val onReady: () -> Unit = {},
 ) {
     // Single lock protects camera state transitions across service callbacks.
     private val lock = Any()
@@ -112,6 +113,12 @@ class Camera2Controller(
         }
     }
 
+    fun isReady(): Boolean {
+        synchronized(lock) {
+            return cameraDevice != null && captureSession != null && imageReader != null
+        }
+    }
+
     fun stop() {
         synchronized(lock) {
             closeLocked()
@@ -183,6 +190,7 @@ class Camera2Controller(
                             set(CaptureRequest.CONTROL_AE_MODE, CaptureRequest.CONTROL_AE_MODE_ON)
                         }
                         session.setRepeatingRequest(request.build(), null, handler)
+                        onReady()
                     }
                 }
 
