@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.IBinder
 import android.provider.Settings
 import android.util.Log
-import android.util.Size
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 import com.example.camera_v.R
@@ -60,6 +59,7 @@ class FloatingCameraService : Service() {
             ACTION_TAKE_PHOTO -> takePhoto()
             ACTION_TOGGLE_FLOATING_BALL -> toggleFloatingBall()
             ACTION_SWITCH_CAMERA -> switchCamera()
+            ACTION_REFRESH_SETTINGS -> startCamera()
             ACTION_START_SERVICE, null -> notifyStatus(true)
         }
         return START_STICKY
@@ -109,9 +109,9 @@ class FloatingCameraService : Service() {
     private fun startCamera() {
         cameraReady = false
         val prefs = getSharedPreferences("floating_camera_prefs", Context.MODE_PRIVATE)
-        val (width, height) = parseResolution(prefs.getString("resolution", "1920x1080") ?: "1920x1080")
+        val resolutionPreference = prefs.getString("resolution", "max") ?: "max"
         cameraController.setLensFacing(lensFacing)
-        cameraController.start(Size(width, height))
+        cameraController.start(resolutionPreference)
     }
 
     private fun takePhoto() {
@@ -134,12 +134,6 @@ class FloatingCameraService : Service() {
             CameraCharacteristics.LENS_FACING_BACK
         }
         startCamera()
-    }
-
-    private fun parseResolution(resolution: String): Pair<Int, Int> {
-        val split = resolution.split("x")
-        if (split.size != 2) return 1920 to 1080
-        return (split[0].toIntOrNull() ?: 1920) to (split[1].toIntOrNull() ?: 1080)
     }
 
     private fun toggleFloatingBall() {
@@ -219,6 +213,7 @@ class FloatingCameraService : Service() {
         const val ACTION_TAKE_PHOTO = "com.example.camera_v.action.TAKE_PHOTO"
         const val ACTION_TOGGLE_FLOATING_BALL = "com.example.camera_v.action.TOGGLE_FLOATING_BALL"
         const val ACTION_SWITCH_CAMERA = "com.example.camera_v.action.SWITCH_CAMERA"
+        const val ACTION_REFRESH_SETTINGS = "com.example.camera_v.action.REFRESH_SETTINGS"
 
         const val ACTION_CALLBACK_PHOTO_SAVED = "com.example.camera_v.callback.PHOTO_SAVED"
         const val ACTION_CALLBACK_STATUS_CHANGED = "com.example.camera_v.callback.STATUS_CHANGED"
