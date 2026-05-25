@@ -248,7 +248,7 @@ class MainActivity : FlutterActivity() {
             val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
             channel.invokeMethod(
                 "onError",
-                "Failed to execute service command ($action): ${detail ?: "unexpected error"}",
+                "Failed to execute service command ($action): $detail",
             )
             false
         }

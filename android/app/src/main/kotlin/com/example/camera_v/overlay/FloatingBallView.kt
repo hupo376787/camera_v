@@ -33,7 +33,7 @@ class FloatingBallView(
         val icon = ImageView(context).apply {
             setImageResource(android.R.drawable.ic_menu_camera)
             background = context.getDrawable(R.drawable.bg_ball)
-            // Parent handles drag/click to keep click-vs-drag behavior consistent.
+            // Parent onTouchEvent handles gestures to distinguish drag vs click.
             isClickable = false
             isFocusable = false
             setPadding(16, 16, 16, 16)
@@ -104,7 +104,7 @@ class FloatingBallView(
             windowManager.updateViewLayout(this, params)
         }.onFailure { error ->
             val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
-            onError("Failed to update floating ball position: ${detail ?: "unexpected error"}")
+            onError("Failed to update floating ball position: $detail")
         }
     }
 

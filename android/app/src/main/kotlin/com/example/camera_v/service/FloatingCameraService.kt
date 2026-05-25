@@ -115,7 +115,7 @@ class FloatingCameraService : Service() {
     }
 
     private fun takePhoto() {
-        // cameraReady tracks async session callback timing; controller check verifies latest runtime state.
+        // Check both callback flag and controller state to avoid early clicks during async camera setup.
         if (!cameraReady || !cameraController.isReady()) {
             notifyError("Camera is not ready yet, please retry")
             return
@@ -147,7 +147,7 @@ class FloatingCameraService : Service() {
     }
 
     private fun showFloatingBall() {
-        // Defensive check: service can also be recreated by system outside MainActivity flow.
+        // Defensive check: system may recreate service outside MainActivity flow.
         if (!Settings.canDrawOverlays(this)) {
             notifyError("Overlay permission not granted, cannot show floating ball")
             return
@@ -211,7 +211,7 @@ class FloatingCameraService : Service() {
 
     private fun formatError(error: Throwable): String {
         val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
-        return detail ?: "unexpected error"
+        return detail
     }
 
     companion object {
