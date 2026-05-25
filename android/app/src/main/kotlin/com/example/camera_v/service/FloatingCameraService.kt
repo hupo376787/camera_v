@@ -117,7 +117,7 @@ class FloatingCameraService : Service() {
     private fun takePhoto() {
         // Check both callback flag and controller state to avoid early clicks during async camera setup.
         if (!cameraReady || !cameraController.isReady()) {
-            notifyError("Camera is not ready yet, please retry")
+            notifyError("Camera is still initializing, please wait a moment and try again")
             return
         }
         val prefs = getSharedPreferences("floating_camera_prefs", Context.MODE_PRIVATE)
@@ -210,8 +210,7 @@ class FloatingCameraService : Service() {
     }
 
     private fun formatError(error: Throwable): String {
-        val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
-        return detail
+        return error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
     }
 
     companion object {

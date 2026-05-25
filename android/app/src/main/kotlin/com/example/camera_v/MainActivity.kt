@@ -242,8 +242,7 @@ class MainActivity : FlutterActivity() {
     private fun startFloatingService(action: String): Boolean {
         val intent = Intent(this, FloatingCameraService::class.java).setAction(action)
         return runCatching {
-            ContextCompat.startForegroundService(this, intent)
-            true
+            ContextCompat.startForegroundService(this, intent) != null
         }.getOrElse { error ->
             val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
             channel.invokeMethod(
