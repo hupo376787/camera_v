@@ -95,7 +95,7 @@ class FloatingCameraService : Service() {
         val notification: Notification = NotificationCompat.Builder(this, channelId)
             .setContentTitle(getString(R.string.notification_title))
             .setContentText(getString(R.string.notification_desc))
-            .setSmallIcon(android.R.drawable.ic_menu_camera)
+            .setSmallIcon(R.drawable.ic_android_robot_notification)
             .setOngoing(true)
             .build()
 

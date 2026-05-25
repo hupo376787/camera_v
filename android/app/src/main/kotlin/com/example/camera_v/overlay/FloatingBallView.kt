@@ -31,7 +31,7 @@ class FloatingBallView(
     init {
         // Visual floating trigger shown above all apps.
         val icon = ImageView(context).apply {
-            setImageResource(android.R.drawable.ic_menu_camera)
+            setImageResource(R.drawable.ic_android_robot_foreground)
             background = context.getDrawable(R.drawable.bg_ball)
             // Parent onTouchEvent handles gestures to distinguish drag vs click.
             isClickable = false
