@@ -69,6 +69,7 @@ class FloatingBallView(
 
             MotionEvent.ACTION_MOVE -> {
                 if (longPressTriggered) {
+                    // Once shutdown is requested, consume follow-up motion until the view is removed.
                     isDragging = false
                     return true
                 }
@@ -87,8 +88,10 @@ class FloatingBallView(
             MotionEvent.ACTION_UP -> {
                 removeCallbacks(longPressRunnable)
                 if (longPressTriggered) {
-                    longPressTriggered = false
-                } else if (!isDragging) {
+                    isDragging = false
+                    return true
+                }
+                if (!isDragging) {
                     onBallClicked.invoke()
                 } else {
                     snapToEdge()
