@@ -44,10 +44,16 @@ class _GalleryPageState extends State<GalleryPage> {
         child: FutureBuilder<Uint8List?>(
           future: _thumbnailFuture(uri),
           builder: (context, snapshot) {
-            if (!snapshot.hasData) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return const Padding(
                 padding: EdgeInsets.all(24),
                 child: Center(child: CircularProgressIndicator()),
+              );
+            }
+            if (snapshot.hasError || !snapshot.hasData) {
+              return const Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: Icon(Icons.broken_image_outlined, size: 48)),
               );
             }
             return Padding(
@@ -94,10 +100,10 @@ class _GalleryPageState extends State<GalleryPage> {
                     child: FutureBuilder<Uint8List?>(
                       future: _thumbnailFuture(uri),
                       builder: (context, snapshot) {
-                        if (snapshot.connectionState != ConnectionState.done) {
+                        if (snapshot.connectionState == ConnectionState.waiting) {
                           return const Center(child: CircularProgressIndicator());
                         }
-                        if (!snapshot.hasData) {
+                        if (snapshot.hasError || !snapshot.hasData) {
                           return const Center(
                             child: Icon(Icons.broken_image_outlined, size: 40),
                           );
