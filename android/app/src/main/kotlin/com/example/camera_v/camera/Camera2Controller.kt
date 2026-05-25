@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.ImageFormat
 import android.graphics.SurfaceTexture
+import android.hardware.display.DisplayManager
 import android.hardware.camera2.CameraCaptureSession
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraDevice
@@ -15,6 +16,7 @@ import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Size
+import android.view.Display
 import android.view.Surface
 import androidx.core.content.ContextCompat
 
@@ -27,6 +29,7 @@ class Camera2Controller(
     // Single lock protects camera state transitions across service callbacks.
     private val lock = Any()
     private val cameraManager = context.getSystemService(CameraManager::class.java)
+    private val displayManager = context.getSystemService(DisplayManager::class.java)
     private var cameraDevice: CameraDevice? = null
     private var captureSession: CameraCaptureSession? = null
     private var imageReader: ImageReader? = null
@@ -34,6 +37,7 @@ class Camera2Controller(
     private var previewSurface: Surface? = null
     private var cameraId: String? = null
     private var lensFacing: Int = CameraCharacteristics.LENS_FACING_BACK
+    private var sensorOrientation: Int = 0
     private var currentReconnectAttempts = 0
 
     private val thread = HandlerThread("Camera2Controller").apply { start() }
@@ -59,8 +63,10 @@ class Camera2Controller(
             }
             currentReconnectAttempts = 0
             cameraId = selected
+            val characteristics = cameraManager.getCameraCharacteristics(selected)
+            sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0
             val captureSize = selectCaptureSize(
-                cameraManager.getCameraCharacteristics(selected),
+                characteristics,
                 resolutionPreference,
             ) ?: run {
                 onError("No supported JPEG capture size found")
@@ -145,6 +151,7 @@ class Camera2Controller(
                     if (flashEnabled) CaptureRequest.CONTROL_AE_MODE_ON_AUTO_FLASH
                     else CaptureRequest.CONTROL_AE_MODE_ON,
                 )
+                set(CaptureRequest.JPEG_ORIENTATION, calculateJpegOrientation())
             }
             session.capture(request.build(), null, handler)
         }
@@ -250,6 +257,20 @@ class Camera2Controller(
         previewSurface = null
         previewTexture?.release()
         previewTexture = null
+    }
+
+    private fun calculateJpegOrientation(): Int {
+        val deviceRotation = context.display?.rotation
+            ?: displayManager.getDisplay(Display.DEFAULT_DISPLAY)?.rotation
+            ?: Surface.ROTATION_0
+        val deviceOrientation = when (deviceRotation) {
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        val sign = if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) 1 else -1
+        return (sensorOrientation + sign * deviceOrientation + 360) % 360
     }
 
     companion object {
