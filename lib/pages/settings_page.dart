@@ -40,10 +40,10 @@ class _SettingsPageState extends State<SettingsPage> {
     );
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
+      SnackBar(
         content: Semantics(
           liveRegion: true,
-          child: Text('设置已保存'),
+          child: const Text('设置已保存'),
         ),
       ),
     );
