@@ -33,7 +33,7 @@ class _GalleryPageState extends State<GalleryPage> {
     });
   }
 
-  Future<Uint8List?> _thumbnailFuture(String uri) {
+  Future<Uint8List?> _cachedPhotoBytes(String uri) {
     return _thumbnailFutures.putIfAbsent(uri, () => CameraBridge.loadPhotoBytes(uri));
   }
 
@@ -42,7 +42,7 @@ class _GalleryPageState extends State<GalleryPage> {
       context: context,
       builder: (context) => Dialog(
         child: FutureBuilder<Uint8List?>(
-          future: _thumbnailFuture(uri),
+          future: _cachedPhotoBytes(uri),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return const Padding(
@@ -53,7 +53,14 @@ class _GalleryPageState extends State<GalleryPage> {
             if (snapshot.hasError || !snapshot.hasData) {
               return const Padding(
                 padding: EdgeInsets.all(24),
-                child: Center(child: Icon(Icons.broken_image_outlined, size: 48)),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.broken_image_outlined, size: 48),
+                    SizedBox(height: 8),
+                    Text('图片加载失败'),
+                  ],
+                ),
               );
             }
             return Padding(
@@ -98,14 +105,21 @@ class _GalleryPageState extends State<GalleryPage> {
                 children: [
                   Expanded(
                     child: FutureBuilder<Uint8List?>(
-                      future: _thumbnailFuture(uri),
+                      future: _cachedPhotoBytes(uri),
                       builder: (context, snapshot) {
                         if (snapshot.connectionState == ConnectionState.waiting) {
                           return const Center(child: CircularProgressIndicator());
                         }
                         if (snapshot.hasError || !snapshot.hasData) {
                           return const Center(
-                            child: Icon(Icons.broken_image_outlined, size: 40),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.broken_image_outlined, size: 40),
+                                SizedBox(height: 4),
+                                Text('加载失败'),
+                              ],
+                            ),
                           );
                         }
                         return Image.memory(
