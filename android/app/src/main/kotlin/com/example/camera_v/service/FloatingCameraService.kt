@@ -148,7 +148,7 @@ class FloatingCameraService : Service() {
         }
         if (floatingBallView != null) return
         val windowManager = getSystemService(WindowManager::class.java)
-        val params = FloatingBallView.createLayoutParams()
+        val params = FloatingBallView.createLayoutParams(this)
         // Floating ball click is user-driven and triggers compliant background capture.
         floatingBallView = FloatingBallView(
             context = this,

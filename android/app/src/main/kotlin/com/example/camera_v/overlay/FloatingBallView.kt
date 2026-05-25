@@ -2,7 +2,6 @@ package com.example.camera_v.overlay
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Rect
 import android.graphics.PixelFormat
 import android.view.Gravity
 import android.view.MotionEvent
@@ -38,7 +37,7 @@ class FloatingBallView(
             isClickable = false
             isFocusable = false
             setPadding(16, 16, 16, 16)
-            layoutParams = LayoutParams(140, 140)
+            layoutParams = LayoutParams(DEFAULT_BALL_SIZE_PX, DEFAULT_BALL_SIZE_PX)
         }
         addView(icon)
         isClickable = true
