@@ -115,8 +115,8 @@ class FloatingBallView(
         fun createLayoutParams(context: Context): WindowManager.LayoutParams {
             val bounds = context.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds
             val initialX = (bounds.width() - DEFAULT_BALL_SIZE_PX - EDGE_MARGIN_PX).coerceAtLeast(0)
-            val lowerThirdTop = bounds.height() * 2 / 3
-            val initialY = (lowerThirdTop - (DEFAULT_BALL_SIZE_PX / 2))
+            val lowerThirdCenterY = bounds.height() * (2f / 3f)
+            val initialY = (lowerThirdCenterY - (DEFAULT_BALL_SIZE_PX / 2f)).toInt()
                 .coerceIn(0, (bounds.height() - DEFAULT_BALL_SIZE_PX - EDGE_MARGIN_PX).coerceAtLeast(0))
             return WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
