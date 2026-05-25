@@ -260,8 +260,8 @@ class Camera2Controller(
     }
 
     private fun calculateJpegOrientation(): Int {
-        val deviceRotation = context.display?.rotation
-            ?: displayManager.getDisplay(Display.DEFAULT_DISPLAY)?.rotation
+        val deviceRotation = displayManager.getDisplay(Display.DEFAULT_DISPLAY)?.rotation
+            ?: context.display?.rotation
             ?: Surface.ROTATION_0
         val deviceOrientation = when (deviceRotation) {
             Surface.ROTATION_90 -> 90
@@ -269,8 +269,8 @@ class Camera2Controller(
             Surface.ROTATION_270 -> 270
             else -> 0
         }
-        val sign = if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) 1 else -1
-        return (sensorOrientation + sign * deviceOrientation + 360) % 360
+        val rotationMultiplier = if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) 1 else -1
+        return (sensorOrientation + rotationMultiplier * deviceOrientation + 360) % 360
     }
 
     companion object {
