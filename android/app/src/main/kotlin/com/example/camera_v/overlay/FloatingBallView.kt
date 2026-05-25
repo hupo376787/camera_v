@@ -37,7 +37,7 @@ class FloatingBallView(
             isClickable = false
             isFocusable = false
             setPadding(16, 16, 16, 16)
-            layoutParams = LayoutParams(140, 140)
+            layoutParams = LayoutParams(DEFAULT_BALL_SIZE_PX, DEFAULT_BALL_SIZE_PX)
         }
         addView(icon)
         isClickable = true
@@ -109,7 +109,15 @@ class FloatingBallView(
     }
 
     companion object {
-        fun createLayoutParams(): WindowManager.LayoutParams {
+        private const val DEFAULT_BALL_SIZE_PX = 140
+        private const val EDGE_MARGIN_PX = 32
+
+        fun createLayoutParams(context: Context): WindowManager.LayoutParams {
+            val bounds = context.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds
+            val initialX = (bounds.width() - DEFAULT_BALL_SIZE_PX - EDGE_MARGIN_PX).coerceAtLeast(0)
+            val lowerThirdCenterY = bounds.height() * (2f / 3f)
+            val initialY = (lowerThirdCenterY - (DEFAULT_BALL_SIZE_PX / 2f)).toInt()
+                .coerceIn(0, (bounds.height() - DEFAULT_BALL_SIZE_PX - EDGE_MARGIN_PX).coerceAtLeast(0))
             return WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -119,8 +127,8 @@ class FloatingBallView(
                 PixelFormat.TRANSLUCENT,
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
-                x = 0
-                y = 300
+                x = initialX
+                y = initialY
             }
         }
     }
