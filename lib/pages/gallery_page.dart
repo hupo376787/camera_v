@@ -24,10 +24,11 @@ class _GalleryPageState extends State<GalleryPage> {
 
   Future<void> _load() async {
     final uris = await CameraBridge.loadGallery();
+    final urisSet = uris.toSet();
     if (!mounted) return;
     setState(() {
       _uris = uris;
-      _thumbnailFutures.removeWhere((uri, _) => !uris.contains(uri));
+      _thumbnailFutures.removeWhere((uri, _) => !urisSet.contains(uri));
       _loading = false;
     });
   }
@@ -81,7 +82,7 @@ class _GalleryPageState extends State<GalleryPage> {
         ),
         itemBuilder: (context, index) {
           final uri = _uris[index];
-          final name = uri.split('/').last;
+          final fileName = uri.split('/').last;
           return Card(
             clipBehavior: Clip.antiAlias,
             child: InkWell(
@@ -115,7 +116,7 @@ class _GalleryPageState extends State<GalleryPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          name,
+                          fileName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
