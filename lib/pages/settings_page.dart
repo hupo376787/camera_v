@@ -43,7 +43,6 @@ class _SettingsPageState extends State<SettingsPage> {
       const SnackBar(
         content: Semantics(
           liveRegion: true,
-          label: '设置已保存',
           child: Text('设置已保存'),
         ),
       ),

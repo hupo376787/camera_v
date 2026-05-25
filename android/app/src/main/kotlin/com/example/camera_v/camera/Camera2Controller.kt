@@ -33,9 +33,11 @@ class Camera2Controller(
     private var previewSurface: Surface? = null
     private var cameraId: String? = null
     private var lensFacing: Int = CameraCharacteristics.LENS_FACING_BACK
+    private var reconnectAttempts = 0
 
     private val thread = HandlerThread("Camera2Controller").apply { start() }
     private val handler = Handler(thread.looper)
+    private val maxReconnectAttempts = 3
 
     fun setLensFacing(facing: Int) {
         synchronized(lock) {
@@ -54,6 +56,7 @@ class Camera2Controller(
                 onError("No camera found for facing=$lensFacing")
                 return
             }
+            reconnectAttempts = 0
             cameraId = selected
             imageReader = ImageReader.newInstance(
                 resolution.width,
@@ -129,6 +132,7 @@ class Camera2Controller(
             override fun onOpened(camera: CameraDevice) {
                 synchronized(lock) {
                     cameraDevice = camera
+                    reconnectAttempts = 0
                     createSessionLocked()
                 }
             }
@@ -137,7 +141,19 @@ class Camera2Controller(
                 synchronized(lock) {
                     camera.close()
                     cameraDevice = null
-                    openCameraLocked()
+                    if (reconnectAttempts >= maxReconnectAttempts) {
+                        onError("Camera disconnected and reconnection limit reached")
+                        return
+                    }
+                    reconnectAttempts += 1
+                    val retryDelayMs = reconnectAttempts * 1000L
+                    handler.postDelayed({
+                        synchronized(lock) {
+                            if (cameraDevice == null) {
+                                openCameraLocked()
+                            }
+                        }
+                    }, retryDelayMs)
                 }
             }
 
