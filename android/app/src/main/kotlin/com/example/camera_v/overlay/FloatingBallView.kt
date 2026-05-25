@@ -74,6 +74,7 @@ class FloatingBallView(
                 } else {
                     snapToEdge()
                 }
+                isDragging = false
                 performClick()
                 return true
             }

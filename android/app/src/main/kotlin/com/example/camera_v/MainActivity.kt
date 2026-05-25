@@ -224,7 +224,7 @@ class MainActivity : FlutterActivity() {
             ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
-            return "Notification permission is required on Android 13+"
+            return "Notification permission is required for Android 13 and above"
         }
         return null
     }

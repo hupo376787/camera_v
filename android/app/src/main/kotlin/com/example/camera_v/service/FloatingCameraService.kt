@@ -68,8 +68,8 @@ class FloatingCameraService : Service() {
     override fun onDestroy() {
         hideFloatingBall()
         cameraReady = false
-        cameraController.stop()
         isRunning = false
+        cameraController.stop()
         notifyStatus(false)
         super.onDestroy()
     }

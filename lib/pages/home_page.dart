@@ -105,7 +105,6 @@ class _HomePageState extends State<HomePage> {
       } else {
         await CameraBridge.stopService();
       }
-      await CameraBridge.requestServiceStatus();
       await _refreshServiceStatus();
     } on PlatformException catch (error) {
       if (!mounted) return;
