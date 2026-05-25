@@ -16,7 +16,6 @@ import android.media.ImageReader
 import android.os.Handler
 import android.os.HandlerThread
 import android.util.Size
-import android.view.Display
 import android.view.Surface
 import androidx.core.content.ContextCompat
 
@@ -260,8 +259,7 @@ class Camera2Controller(
     }
 
     private fun calculateJpegOrientation(): Int {
-        val deviceRotation = displayManager.getDisplay(Display.DEFAULT_DISPLAY)?.rotation
-            ?: context.display?.rotation
+        val deviceRotation = displayManager.displays.firstOrNull()?.rotation
             ?: Surface.ROTATION_0
         val deviceOrientation = when (deviceRotation) {
             Surface.ROTATION_90 -> 90
@@ -269,8 +267,11 @@ class Camera2Controller(
             Surface.ROTATION_270 -> 270
             else -> 0
         }
-        val rotationMultiplier = if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) 1 else -1
-        return (sensorOrientation + rotationMultiplier * deviceOrientation + 360) % 360
+        return if (lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
+            (sensorOrientation + deviceOrientation) % 360
+        } else {
+            (sensorOrientation - deviceOrientation + 360) % 360
+        }
     }
 
     companion object {
