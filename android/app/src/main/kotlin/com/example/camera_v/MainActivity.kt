@@ -21,16 +21,19 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private lateinit var channel: MethodChannel
+    private var eventReceiverRegistered = false
 
     private val eventReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 FloatingCameraService.ACTION_CALLBACK_PHOTO_SAVED -> {
+                    if (!::channel.isInitialized) return
                     val uri = intent.getStringExtra(FloatingCameraService.EXTRA_URI) ?: return
                     channel.invokeMethod("onPhotoSaved", uri)
                 }
 
                 FloatingCameraService.ACTION_CALLBACK_STATUS_CHANGED -> {
+                    if (!::channel.isInitialized) return
                     channel.invokeMethod(
                         "onServiceStatusChanged",
                         intent.getBooleanExtra(FloatingCameraService.EXTRA_RUNNING, false),
@@ -38,11 +41,36 @@ class MainActivity : FlutterActivity() {
                 }
 
                 FloatingCameraService.ACTION_CALLBACK_ERROR -> {
+                    if (!::channel.isInitialized) return
                     val message = intent.getStringExtra(FloatingCameraService.EXTRA_ERROR) ?: return
                     channel.invokeMethod("onError", message)
                 }
+
+                FloatingCameraService.ACTION_CALLBACK_CLOSE_APP -> {
+                    // This callback must still close the task even if Flutter has not finished initializing.
+                    if (!isFinishing) {
+                        finishAndRemoveTask()
+                    }
+                }
             }
         }
+    }
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        val filter = IntentFilter().apply {
+            addAction(FloatingCameraService.ACTION_CALLBACK_PHOTO_SAVED)
+            addAction(FloatingCameraService.ACTION_CALLBACK_STATUS_CHANGED)
+            addAction(FloatingCameraService.ACTION_CALLBACK_ERROR)
+            addAction(FloatingCameraService.ACTION_CALLBACK_CLOSE_APP)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(eventReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            registerReceiver(eventReceiver, filter)
+        }
+        eventReceiverRegistered = true
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -56,25 +84,17 @@ class MainActivity : FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
-        val filter = IntentFilter().apply {
-            addAction(FloatingCameraService.ACTION_CALLBACK_PHOTO_SAVED)
-            addAction(FloatingCameraService.ACTION_CALLBACK_STATUS_CHANGED)
-            addAction(FloatingCameraService.ACTION_CALLBACK_ERROR)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(eventReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(eventReceiver, filter)
-        }
         if (::channel.isInitialized) {
             channel.invokeMethod("onServiceStatusChanged", isFloatingServiceRunning())
         }
     }
 
-    override fun onPause() {
-        unregisterReceiver(eventReceiver)
-        super.onPause()
+    override fun onDestroy() {
+        if (eventReceiverRegistered) {
+            unregisterReceiver(eventReceiver)
+            eventReceiverRegistered = false
+        }
+        super.onDestroy()
     }
 
     private fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {

@@ -24,8 +24,9 @@ lib/
 ## 核心能力
 
 - 前台 `ForegroundService`（`foregroundServiceType="camera"`）常驻并管理 Camera2 生命周期。
-- `TYPE_APPLICATION_OVERLAY` 可拖动悬浮球，点击后无可见预览进行拍照。
+- `TYPE_APPLICATION_OVERLAY` 可拖动悬浮球，点击后无可见预览进行拍照，长按则关闭 APP。
 - 通过 `ImageReader` 拍照并写入 `MediaStore` 到 `Pictures/CameraV/`。
+- 手机锁屏（`ACTION_SCREEN_OFF`）时会自动停止前台服务并关闭 APP。
 - Flutter 通过 `MethodChannel("floating_camera_channel")` 与 Android 通信：
   - Flutter -> Android：`startService`, `stopService`, `takePhoto`, `toggleFloatingBall`, `switchCamera`
   - Android -> Flutter：`onPhotoSaved(uri)`, `onServiceStatusChanged`, `onError(message)`

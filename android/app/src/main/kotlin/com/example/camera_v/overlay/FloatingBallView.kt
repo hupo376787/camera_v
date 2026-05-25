@@ -18,6 +18,7 @@ class FloatingBallView(
     private val windowManager: WindowManager,
     private val params: WindowManager.LayoutParams,
     private val onBallClicked: () -> Unit,
+    private val onBallLongPressed: () -> Unit,
     private val onError: (String) -> Unit = {},
 ) : FrameLayout(context) {
 
@@ -26,7 +27,14 @@ class FloatingBallView(
     private var downX = 0
     private var downY = 0
     private var isDragging = false
+    private var longPressTriggered = false
     private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val longPressRunnable = Runnable {
+        if (!isDragging) {
+            longPressTriggered = true
+            onBallLongPressed.invoke()
+        }
+    }
 
     init {
         // Visual floating trigger shown above all apps.
@@ -54,14 +62,21 @@ class FloatingBallView(
                 downX = params.x
                 downY = params.y
                 isDragging = false
+                longPressTriggered = false
+                postDelayed(longPressRunnable, ViewConfiguration.getLongPressTimeout().toLong())
                 return true
             }
 
             MotionEvent.ACTION_MOVE -> {
+                if (longPressTriggered) {
+                    // Once shutdown is requested, consume follow-up motion until the view is removed.
+                    return true
+                }
                 val dx = (event.rawX - downRawX).toInt()
                 val dy = (event.rawY - downRawY).toInt()
                 if (!isDragging && (abs(dx) > touchSlop || abs(dy) > touchSlop)) {
                     isDragging = true
+                    removeCallbacks(longPressRunnable)
                 }
                 params.x = downX + dx
                 params.y = downY + dy
@@ -70,6 +85,10 @@ class FloatingBallView(
             }
 
             MotionEvent.ACTION_UP -> {
+                removeCallbacks(longPressRunnable)
+                if (longPressTriggered) {
+                    return true
+                }
                 if (!isDragging) {
                     onBallClicked.invoke()
                 } else {
@@ -81,7 +100,9 @@ class FloatingBallView(
             }
 
             MotionEvent.ACTION_CANCEL -> {
+                removeCallbacks(longPressRunnable)
                 isDragging = false
+                longPressTriggered = false
                 return true
             }
         }
@@ -90,6 +111,11 @@ class FloatingBallView(
 
     override fun performClick(): Boolean {
         return super.performClick()
+    }
+
+    override fun onDetachedFromWindow() {
+        removeCallbacks(longPressRunnable)
+        super.onDetachedFromWindow()
     }
 
     private fun snapToEdge() {
