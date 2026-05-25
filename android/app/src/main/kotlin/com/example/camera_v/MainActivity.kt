@@ -67,7 +67,9 @@ class MainActivity : FlutterActivity() {
             @Suppress("DEPRECATION")
             registerReceiver(eventReceiver, filter)
         }
-        channel.invokeMethod("onServiceStatusChanged", isFloatingServiceRunning())
+        if (::channel.isInitialized) {
+            channel.invokeMethod("onServiceStatusChanged", isFloatingServiceRunning())
+        }
     }
 
     override fun onPause() {
@@ -86,7 +88,6 @@ class MainActivity : FlutterActivity() {
                 }
                 val started = startFloatingService(FloatingCameraService.ACTION_START_SERVICE)
                 if (started) {
-                    channel.invokeMethod("onServiceStatusChanged", true)
                     result.success(null)
                 } else {
                     result.error("service_start_failed", "Failed to start foreground service", null)
@@ -105,7 +106,6 @@ class MainActivity : FlutterActivity() {
             "stopService" -> {
                 val dispatched = startFloatingService(FloatingCameraService.ACTION_STOP_SERVICE)
                 if (dispatched) {
-                    channel.invokeMethod("onServiceStatusChanged", false)
                     result.success(null)
                 } else {
                     result.error("service_stop_failed", "Failed to stop foreground service", null)

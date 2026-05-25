@@ -30,7 +30,6 @@ class FloatingCameraService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        isRunning = true
         mediaStoreHelper = MediaStoreHelper(this)
         cameraController = Camera2Controller(
             context = this,
@@ -51,6 +50,7 @@ class FloatingCameraService : Service() {
         startForegroundServiceInternal()
         startCamera()
         showFloatingBall()
+        isRunning = true
         notifyStatus(true)
     }
 
@@ -183,7 +183,6 @@ class FloatingCameraService : Service() {
     }
 
     private fun stopSelfSafely() {
-        notifyStatus(false)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }

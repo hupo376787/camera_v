@@ -109,7 +109,7 @@ class _HomePageState extends State<HomePage> {
     } on PlatformException catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = error.message ?? error.code;
+        _error = error.message ?? 'Service operation failed: ${error.code}';
       });
       await _refreshServiceStatus();
     } finally {

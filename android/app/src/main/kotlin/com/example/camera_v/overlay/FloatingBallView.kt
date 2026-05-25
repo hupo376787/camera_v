@@ -33,6 +33,7 @@ class FloatingBallView(
         val icon = ImageView(context).apply {
             setImageResource(android.R.drawable.ic_menu_camera)
             background = context.getDrawable(R.drawable.bg_ball)
+            // Parent handles drag/click to keep click-vs-drag behavior consistent.
             isClickable = false
             isFocusable = false
             setPadding(16, 16, 16, 16)
