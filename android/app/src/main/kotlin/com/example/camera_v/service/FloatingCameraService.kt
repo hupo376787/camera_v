@@ -115,6 +115,7 @@ class FloatingCameraService : Service() {
     }
 
     private fun takePhoto() {
+        // cameraReady tracks async session callback timing; controller check verifies latest runtime state.
         if (!cameraReady || !cameraController.isReady()) {
             notifyError("Camera is not ready yet, please retry")
             return
@@ -167,7 +168,7 @@ class FloatingCameraService : Service() {
         }.onFailure { error ->
             Log.e(TAG, "Adding floating ball failed", error)
             floatingBallView = null
-            notifyError("Failed to show floating ball: ${error.message ?: "unknown error"}")
+            notifyError("Failed to show floating ball: ${formatError(error)}")
         }
     }
 
@@ -177,7 +178,7 @@ class FloatingCameraService : Service() {
             floatingBallView?.let(windowManager::removeView)
         }.onFailure { error ->
             Log.e(TAG, "Removing floating ball failed", error)
-            notifyError("Failed to hide floating ball: ${error.message ?: "unknown error"}")
+            notifyError("Failed to hide floating ball: ${formatError(error)}")
         }
         floatingBallView = null
     }
@@ -206,6 +207,11 @@ class FloatingCameraService : Service() {
             Intent(ACTION_CALLBACK_ERROR)
                 .putExtra(EXTRA_ERROR, message),
         )
+    }
+
+    private fun formatError(error: Throwable): String {
+        val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
+        return detail ?: "unexpected error"
     }
 
     companion object {

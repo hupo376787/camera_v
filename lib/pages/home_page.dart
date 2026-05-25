@@ -109,7 +109,7 @@ class _HomePageState extends State<HomePage> {
     } on PlatformException catch (error) {
       if (!mounted) return;
       setState(() {
-        _error = error.message ?? 'Service operation failed: ${error.code}';
+        _error = error.message ?? '无法切换前台服务，请先检查相机/悬浮窗/通知权限';
       });
       await _refreshServiceStatus();
     } finally {

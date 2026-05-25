@@ -103,7 +103,8 @@ class FloatingBallView(
         runCatching {
             windowManager.updateViewLayout(this, params)
         }.onFailure { error ->
-            onError("Failed to update floating ball position: ${error.message ?: "unknown error"}")
+            val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
+            onError("Failed to update floating ball position: ${detail ?: "unexpected error"}")
         }
     }
 

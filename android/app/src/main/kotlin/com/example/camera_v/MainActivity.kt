@@ -245,7 +245,11 @@ class MainActivity : FlutterActivity() {
             ContextCompat.startForegroundService(this, intent)
             true
         }.getOrElse { error ->
-            channel.invokeMethod("onError", "Service command failed: ${error.message ?: action}")
+            val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
+            channel.invokeMethod(
+                "onError",
+                "Failed to execute service command ($action): ${detail ?: "unexpected error"}",
+            )
             false
         }
     }
