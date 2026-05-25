@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">camera_v</string>
+    <string name="accessibility_service_name">Floating Camera Accessibility</string>
+    <string name="accessibility_service_description">Forward floating ball click events to camera service.</string>
+    <string name="notification_title">Floating Camera Service</string>
+    <string name="notification_desc">Silent capture service is running.</string>
+    <string name="floating_ball_content_description">Floating capture button / 悬浮拍照按钮</string>
+</resources>
