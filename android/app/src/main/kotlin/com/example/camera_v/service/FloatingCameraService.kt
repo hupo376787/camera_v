@@ -30,6 +30,7 @@ class FloatingCameraService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        isRunning = true
         mediaStoreHelper = MediaStoreHelper(this)
         cameraController = Camera2Controller(
             context = this,
@@ -68,6 +69,7 @@ class FloatingCameraService : Service() {
         hideFloatingBall()
         cameraReady = false
         cameraController.stop()
+        isRunning = false
         notifyStatus(false)
         super.onDestroy()
     }
@@ -144,6 +146,7 @@ class FloatingCameraService : Service() {
     }
 
     private fun showFloatingBall() {
+        // Defensive check: service can also be recreated by system outside MainActivity flow.
         if (!Settings.canDrawOverlays(this)) {
             notifyError("Overlay permission not granted, cannot show floating ball")
             return
@@ -221,6 +224,10 @@ class FloatingCameraService : Service() {
         const val EXTRA_RUNNING = "extra_running"
         const val EXTRA_ERROR = "extra_error"
         private const val TAG = "FloatingCameraService"
+        @Volatile
+        private var isRunning = false
+
+        fun isServiceRunning(): Boolean = isRunning
 
         fun buildTakePhotoIntent(context: Context): Intent {
             return Intent(context, FloatingCameraService::class.java).setAction(ACTION_TAKE_PHOTO)

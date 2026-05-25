@@ -1,7 +1,6 @@
 package com.example.camera_v
 
 import android.Manifest
-import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -251,11 +250,8 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun isFloatingServiceRunning(): Boolean {
-        val manager = getSystemService(ActivityManager::class.java) ?: return false
-        return manager.getRunningServices(Int.MAX_VALUE)
-            .any { it.service.className == FloatingCameraService::class.java.name }
+        return FloatingCameraService.isServiceRunning()
     }
 
     private fun loadGalleryUris(): List<String> {

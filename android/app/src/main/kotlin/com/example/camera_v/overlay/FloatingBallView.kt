@@ -79,6 +79,7 @@ class FloatingBallView(
             }
 
             MotionEvent.ACTION_CANCEL -> {
+                isDragging = false
                 return true
             }
         }
