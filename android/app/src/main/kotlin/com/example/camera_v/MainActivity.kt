@@ -358,7 +358,11 @@ class MainActivity : FlutterActivity() {
         } catch (error: ActivityNotFoundException) {
             pendingCopyResult = null
             pendingCopyUris = emptyList()
-            result.error("folder_picker_unavailable", "System folder picker is unavailable", null)
+            result.error(
+                "folder_picker_unavailable",
+                "无法打开系统文件夹选择器，请确认设备已安装文件管理器后重试",
+                null,
+            )
         }
     }
 
@@ -452,7 +456,7 @@ class MainActivity : FlutterActivity() {
     private fun copyPhotoToTree(uriString: String, treeUri: Uri): Boolean {
         val sourceUri = Uri.parse(uriString)
         val bytes = loadPhotoBytes(uriString) ?: return false
-        val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}.jpg"
+        val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}_${UUID.randomUUID()}.jpg"
         val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
         val targetFolderUri = DocumentsContract.buildDocumentUriUsingTree(
             treeUri,
