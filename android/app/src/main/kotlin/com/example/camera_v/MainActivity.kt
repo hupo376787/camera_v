@@ -424,7 +424,7 @@ class MainActivity : FlutterActivity() {
     private fun copyPhotoToFolder(uriString: String, relativePath: String): Boolean {
         val sourceUri = Uri.parse(uriString)
         val bytes = loadPhotoBytes(uriString) ?: return false
-        val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}_${UUID.randomUUID()}.jpg"
+        val name = displayName(sourceUri) ?: "IMG_${UUID.randomUUID()}.jpg"
         val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, name)
@@ -456,7 +456,7 @@ class MainActivity : FlutterActivity() {
     private fun copyPhotoToTree(uriString: String, treeUri: Uri): Boolean {
         val sourceUri = Uri.parse(uriString)
         val bytes = loadPhotoBytes(uriString) ?: return false
-        val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}_${UUID.randomUUID()}.jpg"
+        val name = displayName(sourceUri) ?: "IMG_${UUID.randomUUID()}.jpg"
         val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
         val targetFolderUri = DocumentsContract.buildDocumentUriUsingTree(
             treeUri,
