@@ -424,7 +424,7 @@ class MainActivity : FlutterActivity() {
     private fun copyPhotoToFolder(uriString: String, relativePath: String): Boolean {
         val sourceUri = Uri.parse(uriString)
         val bytes = loadPhotoBytes(uriString) ?: return false
-        val name = displayName(sourceUri) ?: "IMG_${UUID.randomUUID()}.jpg"
+        val name = displayName(sourceUri) ?: fallbackPhotoName()
         val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, name)
@@ -456,7 +456,7 @@ class MainActivity : FlutterActivity() {
     private fun copyPhotoToTree(uriString: String, treeUri: Uri): Boolean {
         val sourceUri = Uri.parse(uriString)
         val bytes = loadPhotoBytes(uriString) ?: return false
-        val name = displayName(sourceUri) ?: "IMG_${UUID.randomUUID()}.jpg"
+        val name = displayName(sourceUri) ?: fallbackPhotoName()
         val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
         val targetFolderUri = DocumentsContract.buildDocumentUriUsingTree(
             treeUri,
@@ -487,6 +487,10 @@ class MainActivity : FlutterActivity() {
             if (!cursor.moveToFirst()) return@use null
             cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME))
         }
+    }
+
+    private fun fallbackPhotoName(): String {
+        return "IMG_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}.jpg"
     }
 
     private fun sanitizeFolderName(folder: String): String {
