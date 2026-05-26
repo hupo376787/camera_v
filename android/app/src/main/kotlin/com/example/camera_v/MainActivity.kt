@@ -12,6 +12,7 @@ import android.os.Build
 import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.Settings
+import android.util.Log
 import java.io.ByteArrayOutputStream
 import java.util.UUID
 import androidx.core.app.ActivityCompat
@@ -24,6 +25,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private companion object {
+        const val TAG = "CameraVMainActivity"
         const val REQUEST_PICK_COPY_FOLDER = 501
     }
 
@@ -281,11 +283,10 @@ class MainActivity : FlutterActivity() {
             if (flags != 0) {
                 contentResolver.takePersistableUriPermission(treeUri, flags)
             } else {
-                channel.invokeMethod("onError", "系统未返回可持久保存的文件夹访问权限，本次复制仍会继续")
+                Log.w(TAG, "System folder picker did not return persistable URI permission flags")
             }
         }.onFailure { error ->
-            val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
-            channel.invokeMethod("onError", "无法持久保存文件夹访问权限，本次复制仍会继续：$detail")
+            Log.w(TAG, "Failed to persist folder URI permission", error)
         }
         result.success(copyPhotosToTree(uris, treeUri))
     }
