@@ -63,6 +63,14 @@ class _GalleryPageState extends State<GalleryPage> {
     });
   }
 
+  void _handlePhotoTap(String uri, int index) {
+    if (_selectionMode) {
+      _toggleSelection(uri);
+    } else {
+      _openPreview(index);
+    }
+  }
+
   Future<void> _openPreview(int initialIndex) {
     return showDialog<void>(
       context: context,
@@ -182,7 +190,7 @@ class _GalleryPageState extends State<GalleryPage> {
       folder.trim(),
     );
     if (!mounted) return;
-    setState(_selectedUris.clear);
+    setState(() => _selectedUris.clear());
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('已复制 $copiedCount 张图片到 Pictures/${folder.trim()}')),
     );
@@ -269,7 +277,7 @@ class _GalleryPageState extends State<GalleryPage> {
                 return Card(
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
-                    onTap: () => _selectionMode ? _toggleSelection(uri) : _openPreview(index),
+                    onTap: () => _handlePhotoTap(uri, index),
                     onLongPress: () => _toggleSelection(uri),
                     child: Stack(
                       fit: StackFit.expand,

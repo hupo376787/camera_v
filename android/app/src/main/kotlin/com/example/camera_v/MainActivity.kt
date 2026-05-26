@@ -395,14 +395,17 @@ class MainActivity : FlutterActivity() {
         val trimmed = folder.trim()
         if (trimmed.startsWith(".") ||
             trimmed.contains("..") ||
-            trimmed.contains(".") ||
             trimmed.contains("/") ||
             trimmed.contains("\\")
         ) {
             return DEFAULT_COPY_FOLDER
         }
         val cleaned = trimmed.map { char ->
-            if (char.isLetterOrDigit() || char == '_' || char == '-' || char == ' ') char else '_'
+            if (char.isLetterOrDigit() || char == '.' || char == '_' || char == '-' || char == ' ') {
+                char
+            } else {
+                '_'
+            }
         }.joinToString("").trim()
         return cleaned.ifBlank { DEFAULT_COPY_FOLDER }
     }
