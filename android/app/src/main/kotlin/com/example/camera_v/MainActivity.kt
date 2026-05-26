@@ -457,6 +457,6 @@ class MainActivity : FlutterActivity() {
             "image/heic", "image/heif" -> "heic"
             else -> "jpg"
         }
-        return "IMG_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}.$extension"
+        return "IMG_${UUID.randomUUID()}.$extension"
     }
 }
