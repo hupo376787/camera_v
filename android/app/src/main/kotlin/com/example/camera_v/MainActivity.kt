@@ -2,6 +2,7 @@ package com.example.camera_v
 
 import android.Manifest
 import android.content.BroadcastReceiver
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -20,6 +21,10 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private companion object {
+        const val DEFAULT_COPY_FOLDER = "CameraVSelected"
+    }
+
     private lateinit var channel: MethodChannel
     private var eventReceiverRegistered = false
 
@@ -201,6 +206,19 @@ class MainActivity : FlutterActivity() {
                 result.success(loadPhotoBytes(uriString))
             }
 
+            "deletePhotos" -> {
+                val uris: List<*> = (call.arguments as? Map<*, *>)?.get("uris") as? List<*>
+                    ?: emptyList<Any>()
+                result.success(deletePhotos(uris.mapNotNull { it as? String }))
+            }
+
+            "copyPhotosToFolder" -> {
+                val args = call.arguments as? Map<*, *> ?: emptyMap<String, Any>()
+                val uris: List<*> = args["uris"] as? List<*> ?: emptyList<Any>()
+                val folder = args["folder"] as? String ?: DEFAULT_COPY_FOLDER
+                result.success(copyPhotosToFolder(uris.mapNotNull { it as? String }, folder))
+            }
+
             "openOverlayPermission" -> {
                 startActivity(
                     Intent(
@@ -318,5 +336,79 @@ class MainActivity : FlutterActivity() {
                 buffer.toByteArray()
             }
         }.getOrNull()
+    }
+
+    private fun deletePhotos(uriStrings: List<String>): Int {
+        return uriStrings.count { uriString ->
+            runCatching {
+                contentResolver.delete(Uri.parse(uriString), null, null) > 0
+            }.getOrDefault(false)
+        }
+    }
+
+    private fun copyPhotosToFolder(uriStrings: List<String>, folder: String): Int {
+        val relativePath = "Pictures/${sanitizeFolderName(folder)}/"
+        return uriStrings.count { uriString ->
+            copyPhotoToFolder(uriString, relativePath)
+        }
+    }
+
+    private fun copyPhotoToFolder(uriString: String, relativePath: String): Boolean {
+        val sourceUri = Uri.parse(uriString)
+        val bytes = loadPhotoBytes(uriString) ?: return false
+        val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}.jpg"
+        val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, name)
+            put(MediaStore.Images.Media.MIME_TYPE, mimeType)
+            put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        return runCatching {
+            val targetUri = contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                values,
+            ) ?: return@runCatching false
+            contentResolver.openOutputStream(targetUri)?.use { output ->
+                output.write(bytes)
+            } ?: return@runCatching false
+            values.clear()
+            values.put(MediaStore.Images.Media.IS_PENDING, 0)
+            contentResolver.update(targetUri, values, null, null)
+            true
+        }.getOrDefault(false)
+    }
+
+    private fun displayName(uri: Uri): String? {
+        return contentResolver.query(
+            uri,
+            arrayOf(MediaStore.Images.Media.DISPLAY_NAME),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (!cursor.moveToFirst()) return@use null
+            cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME))
+        }
+    }
+
+    private fun sanitizeFolderName(folder: String): String {
+        val trimmed = folder.trim()
+        if (trimmed.startsWith(".") ||
+            trimmed.endsWith(".") ||
+            trimmed.contains("..") ||
+            trimmed.contains("/") ||
+            trimmed.contains("\\")
+        ) {
+            return DEFAULT_COPY_FOLDER
+        }
+        val cleaned = trimmed.map { char ->
+            if (char.isLetterOrDigit() || char == '.' || char == '_' || char == '-' || char == ' ') {
+                char
+            } else {
+                '_'
+            }
+        }.joinToString("").trim()
+        return cleaned.ifBlank { DEFAULT_COPY_FOLDER }
     }
 }
