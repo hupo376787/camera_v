@@ -286,7 +286,9 @@ class MainActivity : FlutterActivity() {
         runCatching {
             val flags = data.flags and
                 (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            contentResolver.takePersistableUriPermission(treeUri, flags)
+            if (flags != 0) {
+                contentResolver.takePersistableUriPermission(treeUri, flags)
+            }
         }
         result.success(copyPhotosToTree(uris, treeUri))
     }
@@ -347,8 +349,7 @@ class MainActivity : FlutterActivity() {
             addFlags(
                 Intent.FLAG_GRANT_READ_URI_PERMISSION or
                     Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
-                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
-                    Intent.FLAG_GRANT_PREFIX_URI_PERMISSION,
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION,
             )
         }
         try {
