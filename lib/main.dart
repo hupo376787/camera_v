@@ -149,6 +149,11 @@ class CameraBridge {
     return result is int ? result : 0;
   }
 
+  static Future<int?> copyPhotosToPickedFolder(List<String> uris) async {
+    final result = await _channel.invokeMethod('copyPhotosToPickedFolder', {'uris': uris});
+    return result is int ? result : null;
+  }
+
   static Future<void> openOverlayPermission() => _channel.invokeMethod('openOverlayPermission');
 
   static Future<void> openAccessibilityPermission() =>

@@ -1,10 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../main.dart';
-
-const _defaultCopyFolder = 'CameraVSelected';
 
 class GalleryPage extends StatefulWidget {
   const GalleryPage({super.key});
@@ -149,45 +148,19 @@ class _GalleryPageState extends State<GalleryPage> {
   }
 
   Future<void> _copySelectedToFolder() async {
-    final controller = TextEditingController(text: _defaultCopyFolder);
-    final folder = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('复制到文件夹'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Pictures 下的文件夹名称',
-            hintText: '例如 CameraVSelected',
-          ),
-          textInputAction: TextInputAction.done,
-          onSubmitted: (value) => Navigator.of(context).pop(value),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(context).pop(controller.text),
-            child: const Text('复制'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    if (folder == null || folder.trim().isEmpty) return;
-
-    final copiedCount = await CameraBridge.copyPhotosToFolder(
-      _selectedUris.toList(),
-      folder.trim(),
-    );
-    if (!mounted) return;
-    setState(() => _selectedUris.clear());
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已复制 $copiedCount 张图片到 Pictures/${folder.trim()}')),
-    );
+    try {
+      final copiedCount = await CameraBridge.copyPhotosToPickedFolder(_selectedUris.toList());
+      if (!mounted || copiedCount == null) return;
+      setState(() => _selectedUris.clear());
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已复制 $copiedCount 张图片到所选文件夹')),
+      );
+    } on PlatformException catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message ?? '复制失败，请重试')),
+      );
+    }
   }
 
   Widget _buildSelectionBar() {

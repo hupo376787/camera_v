@@ -2,6 +2,7 @@ package com.example.camera_v
 
 import android.Manifest
 import android.content.BroadcastReceiver
+import android.content.ActivityNotFoundException
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -9,6 +10,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.Settings
 import java.io.ByteArrayOutputStream
@@ -23,10 +25,13 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private companion object {
         const val DEFAULT_COPY_FOLDER = "CameraVSelected"
+        const val REQUEST_PICK_COPY_FOLDER = 501
     }
 
     private lateinit var channel: MethodChannel
     private var eventReceiverRegistered = false
+    private var pendingCopyResult: MethodChannel.Result? = null
+    private var pendingCopyUris: List<String> = emptyList()
 
     private val eventReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -219,6 +224,12 @@ class MainActivity : FlutterActivity() {
                 result.success(copyPhotosToFolder(uris.mapNotNull { it as? String }, folder))
             }
 
+            "copyPhotosToPickedFolder" -> {
+                val uris: List<*> = (call.arguments as? Map<*, *>)?.get("uris") as? List<*>
+                    ?: emptyList<Any>()
+                pickFolderAndCopyPhotos(uris.mapNotNull { it as? String }, result)
+            }
+
             "openOverlayPermission" -> {
                 startActivity(
                     Intent(
@@ -252,6 +263,32 @@ class MainActivity : FlutterActivity() {
 
             else -> result.notImplemented()
         }
+    }
+
+    @Deprecated("Deprecated in Android API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode != REQUEST_PICK_COPY_FOLDER) {
+            super.onActivityResult(requestCode, resultCode, data)
+            return
+        }
+
+        val result = pendingCopyResult ?: return
+        val uris = pendingCopyUris
+        pendingCopyResult = null
+        pendingCopyUris = emptyList()
+
+        val treeUri = data?.data
+        if (resultCode != RESULT_OK || treeUri == null) {
+            result.success(null)
+            return
+        }
+
+        runCatching {
+            val flags = data.flags and
+                (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            contentResolver.takePersistableUriPermission(treeUri, flags)
+        }
+        result.success(copyPhotosToTree(uris, treeUri))
     }
 
     private fun validateStartServicePermissions(): String? {
@@ -296,6 +333,31 @@ class MainActivity : FlutterActivity() {
 
     private fun isFloatingServiceRunning(): Boolean {
         return FloatingCameraService.isServiceRunning()
+    }
+
+    private fun pickFolderAndCopyPhotos(uriStrings: List<String>, result: MethodChannel.Result) {
+        if (pendingCopyResult != null) {
+            result.error("folder_picker_busy", "Folder picker is already open", null)
+            return
+        }
+        pendingCopyResult = result
+        pendingCopyUris = uriStrings
+
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PREFIX_URI_PERMISSION,
+            )
+        }
+        try {
+            startActivityForResult(intent, REQUEST_PICK_COPY_FOLDER)
+        } catch (error: ActivityNotFoundException) {
+            pendingCopyResult = null
+            pendingCopyUris = emptyList()
+            result.error("folder_picker_unavailable", "System folder picker is unavailable", null)
+        }
     }
 
     private fun loadGalleryUris(): List<String> {
@@ -375,6 +437,35 @@ class MainActivity : FlutterActivity() {
             values.clear()
             values.put(MediaStore.Images.Media.IS_PENDING, 0)
             contentResolver.update(targetUri, values, null, null)
+            true
+        }.getOrDefault(false)
+    }
+
+    private fun copyPhotosToTree(uriStrings: List<String>, treeUri: Uri): Int {
+        return uriStrings.count { uriString ->
+            copyPhotoToTree(uriString, treeUri)
+        }
+    }
+
+    private fun copyPhotoToTree(uriString: String, treeUri: Uri): Boolean {
+        val sourceUri = Uri.parse(uriString)
+        val bytes = loadPhotoBytes(uriString) ?: return false
+        val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}.jpg"
+        val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
+        val targetFolderUri = DocumentsContract.buildDocumentUriUsingTree(
+            treeUri,
+            DocumentsContract.getTreeDocumentId(treeUri),
+        )
+        return runCatching {
+            val targetUri = DocumentsContract.createDocument(
+                contentResolver,
+                targetFolderUri,
+                mimeType,
+                name,
+            ) ?: return@runCatching false
+            contentResolver.openOutputStream(targetUri)?.use { output ->
+                output.write(bytes)
+            } ?: return@runCatching false
             true
         }.getOrDefault(false)
     }
