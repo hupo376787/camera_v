@@ -280,6 +280,8 @@ class MainActivity : FlutterActivity() {
                 (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
             if (flags != 0) {
                 contentResolver.takePersistableUriPermission(treeUri, flags)
+            } else {
+                channel.invokeMethod("onError", "系统未返回可持久保存的文件夹访问权限，本次复制仍会继续")
             }
         }.onFailure { error ->
             val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
@@ -334,7 +336,7 @@ class MainActivity : FlutterActivity() {
 
     private fun pickFolderAndCopyPhotos(uriStrings: List<String>, result: MethodChannel.Result) {
         if (pendingCopyResult != null) {
-            result.error("folder_picker_busy", "Folder picker is already open", null)
+            result.error("folder_picker_busy", "文件夹选择器已打开，请先完成当前选择", null)
             return
         }
         pendingCopyResult = result
