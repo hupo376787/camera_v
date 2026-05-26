@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 
 import '../main.dart';
 
+const _defaultCopyFolder = 'CameraVSelected';
+
 class GalleryPage extends StatefulWidget {
   const GalleryPage({super.key});
 
@@ -145,7 +147,7 @@ class _GalleryPageState extends State<GalleryPage> {
   }
 
   Future<void> _copySelectedToFolder() async {
-    final controller = TextEditingController(text: 'CameraVSelected');
+    final controller = TextEditingController(text: _defaultCopyFolder);
     final folder = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
