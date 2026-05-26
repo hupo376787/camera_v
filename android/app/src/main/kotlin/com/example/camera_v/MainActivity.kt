@@ -1,6 +1,7 @@
 package com.example.camera_v
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -201,6 +202,18 @@ class MainActivity : FlutterActivity() {
                 result.success(loadPhotoBytes(uriString))
             }
 
+            "deletePhotos" -> {
+                val uris = (call.arguments as? Map<*, *>)?.get("uris") as? List<*> ?: emptyList<Any>()
+                result.success(deletePhotos(uris.mapNotNull { it as? String }))
+            }
+
+            "copyPhotosToFolder" -> {
+                val args = call.arguments as? Map<*, *> ?: emptyMap<String, Any>()
+                val uris = args["uris"] as? List<*> ?: emptyList<Any>()
+                val folder = args["folder"] as? String ?: "CameraVSelected"
+                result.success(copyPhotosToFolder(uris.mapNotNull { it as? String }, folder))
+            }
+
             "openOverlayPermission" -> {
                 startActivity(
                     Intent(
@@ -318,5 +331,61 @@ class MainActivity : FlutterActivity() {
                 buffer.toByteArray()
             }
         }.getOrNull()
+    }
+
+    private fun deletePhotos(uriStrings: List<String>): Int {
+        return uriStrings.count { uriString ->
+            runCatching {
+                contentResolver.delete(Uri.parse(uriString), null, null) > 0
+            }.getOrDefault(false)
+        }
+    }
+
+    private fun copyPhotosToFolder(uriStrings: List<String>, folder: String): Int {
+        val relativePath = "Pictures/${sanitizeFolderName(folder)}/"
+        return uriStrings.count { uriString ->
+            val sourceUri = Uri.parse(uriString)
+            val bytes = loadPhotoBytes(uriString) ?: return@count false
+            val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}.jpg"
+            val values = ContentValues().apply {
+                put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
+                put(MediaStore.Images.Media.IS_PENDING, 1)
+            }
+            runCatching {
+                val targetUri = contentResolver.insert(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    values,
+                ) ?: return@count false
+                contentResolver.openOutputStream(targetUri)?.use { output ->
+                    output.write(bytes)
+                } ?: return@count false
+                values.clear()
+                values.put(MediaStore.Images.Media.IS_PENDING, 0)
+                contentResolver.update(targetUri, values, null, null)
+                true
+            }.getOrDefault(false)
+        }
+    }
+
+    private fun displayName(uri: Uri): String? {
+        return contentResolver.query(
+            uri,
+            arrayOf(MediaStore.Images.Media.DISPLAY_NAME),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (!cursor.moveToFirst()) return@use null
+            cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME))
+        }
+    }
+
+    private fun sanitizeFolderName(folder: String): String {
+        return folder.trim()
+            .replace(Regex("""[\\/:*?"<>|]+"""), "_")
+            .trim('.', ' ')
+            .ifBlank { "CameraVSelected" }
     }
 }
