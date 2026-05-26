@@ -3,7 +3,6 @@ package com.example.camera_v
 import android.Manifest
 import android.content.BroadcastReceiver
 import android.content.ActivityNotFoundException
-import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -25,7 +24,6 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private companion object {
-        const val DEFAULT_COPY_FOLDER = "CameraVSelected"
         const val REQUEST_PICK_COPY_FOLDER = 501
     }
 
@@ -218,13 +216,6 @@ class MainActivity : FlutterActivity() {
                 result.success(deletePhotos(uris.mapNotNull { it as? String }))
             }
 
-            "copyPhotosToFolder" -> {
-                val args = call.arguments as? Map<*, *> ?: emptyMap<String, Any>()
-                val uris: List<*> = args["uris"] as? List<*> ?: emptyList<Any>()
-                val folder = args["folder"] as? String ?: DEFAULT_COPY_FOLDER
-                result.success(copyPhotosToFolder(uris.mapNotNull { it as? String }, folder))
-            }
-
             "copyPhotosToPickedFolder" -> {
                 val uris: List<*> = (call.arguments as? Map<*, *>)?.get("uris") as? List<*>
                     ?: emptyList<Any>()
@@ -290,6 +281,9 @@ class MainActivity : FlutterActivity() {
             if (flags != 0) {
                 contentResolver.takePersistableUriPermission(treeUri, flags)
             }
+        }.onFailure { error ->
+            val detail = error.message?.takeIf { it.isNotBlank() } ?: error.javaClass.simpleName
+            channel.invokeMethod("onError", "无法持久保存文件夹访问权限，本次复制仍会继续：$detail")
         }
         result.success(copyPhotosToTree(uris, treeUri))
     }
@@ -414,39 +408,6 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun copyPhotosToFolder(uriStrings: List<String>, folder: String): Int {
-        val relativePath = "Pictures/${sanitizeFolderName(folder)}/"
-        return uriStrings.count { uriString ->
-            copyPhotoToFolder(uriString, relativePath)
-        }
-    }
-
-    private fun copyPhotoToFolder(uriString: String, relativePath: String): Boolean {
-        val sourceUri = Uri.parse(uriString)
-        val bytes = loadPhotoBytes(uriString) ?: return false
-        val name = displayName(sourceUri) ?: fallbackPhotoName()
-        val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
-        val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, name)
-            put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-            put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
-            put(MediaStore.Images.Media.IS_PENDING, 1)
-        }
-        return runCatching {
-            val targetUri = contentResolver.insert(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                values,
-            ) ?: return@runCatching false
-            contentResolver.openOutputStream(targetUri)?.use { output ->
-                output.write(bytes)
-            } ?: return@runCatching false
-            values.clear()
-            values.put(MediaStore.Images.Media.IS_PENDING, 0)
-            contentResolver.update(targetUri, values, null, null)
-            true
-        }.getOrDefault(false)
-    }
-
     private fun copyPhotosToTree(uriStrings: List<String>, treeUri: Uri): Int {
         return uriStrings.count { uriString ->
             copyPhotoToTree(uriString, treeUri)
@@ -456,8 +417,8 @@ class MainActivity : FlutterActivity() {
     private fun copyPhotoToTree(uriString: String, treeUri: Uri): Boolean {
         val sourceUri = Uri.parse(uriString)
         val bytes = loadPhotoBytes(uriString) ?: return false
-        val name = displayName(sourceUri) ?: fallbackPhotoName()
         val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
+        val name = displayName(sourceUri) ?: fallbackPhotoName(mimeType)
         val targetFolderUri = DocumentsContract.buildDocumentUriUsingTree(
             treeUri,
             DocumentsContract.getTreeDocumentId(treeUri),
@@ -489,27 +450,13 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun fallbackPhotoName(): String {
-        return "IMG_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}.jpg"
-    }
-
-    private fun sanitizeFolderName(folder: String): String {
-        val trimmed = folder.trim()
-        if (trimmed.startsWith(".") ||
-            trimmed.endsWith(".") ||
-            trimmed.contains("..") ||
-            trimmed.contains("/") ||
-            trimmed.contains("\\")
-        ) {
-            return DEFAULT_COPY_FOLDER
+    private fun fallbackPhotoName(mimeType: String): String {
+        val extension = when (mimeType.lowercase()) {
+            "image/png" -> "png"
+            "image/webp" -> "webp"
+            "image/heic", "image/heif" -> "heic"
+            else -> "jpg"
         }
-        val cleaned = trimmed.map { char ->
-            if (char.isLetterOrDigit() || char == '.' || char == '_' || char == '-' || char == ' ') {
-                char
-            } else {
-                '_'
-            }
-        }.joinToString("").trim()
-        return cleaned.ifBlank { DEFAULT_COPY_FOLDER }
+        return "IMG_${System.currentTimeMillis()}_${UUID.randomUUID().toString().take(8)}.$extension"
     }
 }
