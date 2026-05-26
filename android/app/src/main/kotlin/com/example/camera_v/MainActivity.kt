@@ -1,8 +1,8 @@
 package com.example.camera_v
 
 import android.Manifest
-import android.content.ContentValues
 import android.content.BroadcastReceiver
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -23,6 +23,7 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private companion object {
         const val DEFAULT_COPY_FOLDER = "CameraVSelected"
+        val SAFE_FOLDER_NAME_CHARS = Regex("""[^\p{L}\p{N}._ -]+""")
     }
 
     private lateinit var channel: MethodChannel
@@ -401,7 +402,7 @@ class MainActivity : FlutterActivity() {
             return DEFAULT_COPY_FOLDER
         }
         return trimmed
-            .replace(Regex("""[^\p{L}\p{N}._ -]+"""), "_")
+            .replace(SAFE_FOLDER_NAME_CHARS, "_")
             .trim('.', ' ')
             .ifBlank { DEFAULT_COPY_FOLDER }
     }
