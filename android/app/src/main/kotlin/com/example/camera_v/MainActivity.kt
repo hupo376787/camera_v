@@ -207,13 +207,14 @@ class MainActivity : FlutterActivity() {
             }
 
             "deletePhotos" -> {
-                val uris = (call.arguments as? Map<*, *>)?.get("uris") as? List<*> ?: emptyList<String>()
+                val uris: List<*> = (call.arguments as? Map<*, *>)?.get("uris") as? List<*>
+                    ?: emptyList<Any>()
                 result.success(deletePhotos(uris.mapNotNull { it as? String }))
             }
 
             "copyPhotosToFolder" -> {
                 val args = call.arguments as? Map<*, *> ?: emptyMap<String, Any>()
-                val uris = args["uris"] as? List<*> ?: emptyList<String>()
+                val uris: List<*> = args["uris"] as? List<*> ?: emptyList<Any>()
                 val folder = args["folder"] as? String ?: DEFAULT_COPY_FOLDER
                 result.success(copyPhotosToFolder(uris.mapNotNull { it as? String }, folder))
             }
