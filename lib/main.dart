@@ -136,6 +136,19 @@ class CameraBridge {
     return result is Uint8List ? result : null;
   }
 
+  static Future<int> deletePhotos(List<String> uris) async {
+    final result = await _channel.invokeMethod('deletePhotos', {'uris': uris});
+    return result is int ? result : 0;
+  }
+
+  static Future<int> copyPhotosToFolder(List<String> uris, String folder) async {
+    final result = await _channel.invokeMethod('copyPhotosToFolder', {
+      'uris': uris,
+      'folder': folder,
+    });
+    return result is int ? result : 0;
+  }
+
   static Future<void> openOverlayPermission() => _channel.invokeMethod('openOverlayPermission');
 
   static Future<void> openAccessibilityPermission() =>
