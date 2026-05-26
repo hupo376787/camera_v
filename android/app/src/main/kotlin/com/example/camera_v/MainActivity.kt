@@ -23,7 +23,6 @@ import io.flutter.plugin.common.MethodChannel
 class MainActivity : FlutterActivity() {
     private companion object {
         const val DEFAULT_COPY_FOLDER = "CameraVSelected"
-        val FOLDER_NAME_CHARS_TO_REPLACE = Regex("""[^\p{L}\p{N}._ -]+""")
     }
 
     private lateinit var channel: MethodChannel
@@ -396,12 +395,15 @@ class MainActivity : FlutterActivity() {
         val trimmed = folder.trim()
         if (trimmed.startsWith(".") ||
             trimmed.contains("..") ||
+            trimmed.contains(".") ||
             trimmed.contains("/") ||
             trimmed.contains("\\")
         ) {
             return DEFAULT_COPY_FOLDER
         }
-        val cleaned = trimmed.replace(FOLDER_NAME_CHARS_TO_REPLACE, "_").trim('.', ' ')
+        val cleaned = trimmed.map { char ->
+            if (char.isLetterOrDigit() || char == '_' || char == '-' || char == ' ') char else '_'
+        }.joinToString("").trim()
         return cleaned.ifBlank { DEFAULT_COPY_FOLDER }
     }
 }
