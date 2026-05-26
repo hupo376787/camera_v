@@ -344,29 +344,33 @@ class MainActivity : FlutterActivity() {
     private fun copyPhotosToFolder(uriStrings: List<String>, folder: String): Int {
         val relativePath = "Pictures/${sanitizeFolderName(folder)}/"
         return uriStrings.count { uriString ->
-            val sourceUri = Uri.parse(uriString)
-            val bytes = loadPhotoBytes(uriString) ?: return@count false
-            val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}.jpg"
-            val values = ContentValues().apply {
-                put(MediaStore.Images.Media.DISPLAY_NAME, name)
-                put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
-                put(MediaStore.Images.Media.IS_PENDING, 1)
-            }
-            runCatching {
-                val targetUri = contentResolver.insert(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    values,
-                ) ?: return@count false
-                contentResolver.openOutputStream(targetUri)?.use { output ->
-                    output.write(bytes)
-                } ?: return@count false
-                values.clear()
-                values.put(MediaStore.Images.Media.IS_PENDING, 0)
-                contentResolver.update(targetUri, values, null, null)
-                true
-            }.getOrDefault(false)
+            copyPhotoToFolder(uriString, relativePath)
         }
+    }
+
+    private fun copyPhotoToFolder(uriString: String, relativePath: String): Boolean {
+        val sourceUri = Uri.parse(uriString)
+        val bytes = loadPhotoBytes(uriString) ?: return false
+        val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}.jpg"
+        val values = ContentValues().apply {
+            put(MediaStore.Images.Media.DISPLAY_NAME, name)
+            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
+            put(MediaStore.Images.Media.IS_PENDING, 1)
+        }
+        return runCatching {
+            val targetUri = contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                values,
+            ) ?: return@runCatching false
+            contentResolver.openOutputStream(targetUri)?.use { output ->
+                output.write(bytes)
+            } ?: return@runCatching false
+            values.clear()
+            values.put(MediaStore.Images.Media.IS_PENDING, 0)
+            contentResolver.update(targetUri, values, null, null)
+            true
+        }.getOrDefault(false)
     }
 
     private fun displayName(uri: Uri): String? {

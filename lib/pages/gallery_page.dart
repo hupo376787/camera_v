@@ -311,7 +311,7 @@ class _GalleryPageState extends State<GalleryPage> {
                         if (selected)
                           Positioned.fill(
                             child: ColoredBox(
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.18),
+                              color: Theme.of(context).colorScheme.primary.withAlpha(46),
                             ),
                           ),
                         Positioned(
