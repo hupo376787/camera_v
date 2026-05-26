@@ -140,13 +140,7 @@ class _GalleryPageState extends State<GalleryPage> {
     final uris = _selectedUris.toList();
     final deletedCount = await CameraBridge.deletePhotos(uris);
     if (!mounted) return;
-    setState(() {
-      _uris = _uris.where((uri) => !uris.contains(uri)).toList();
-      for (final uri in uris) {
-        _thumbnailFutures.remove(uri);
-      }
-      _selectedUris.clear();
-    });
+    setState(() => _selectedUris.clear());
     await _load();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

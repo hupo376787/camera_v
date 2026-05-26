@@ -395,6 +395,7 @@ class MainActivity : FlutterActivity() {
     private fun sanitizeFolderName(folder: String): String {
         val trimmed = folder.trim()
         if (trimmed.startsWith(".") ||
+            trimmed.endsWith(".") ||
             trimmed.contains("..") ||
             trimmed.contains("/") ||
             trimmed.contains("\\")
