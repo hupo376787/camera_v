@@ -14,6 +14,7 @@ import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
 import java.io.ByteArrayOutputStream
+import java.util.Locale
 import java.util.UUID
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -454,7 +455,7 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun fallbackPhotoName(mimeType: String): String {
-        val extension = when (mimeType.lowercase()) {
+        val extension = when (mimeType.lowercase(Locale.ROOT)) {
             "image/png" -> "png"
             "image/webp" -> "webp"
             "image/heic", "image/heif" -> "heic"
