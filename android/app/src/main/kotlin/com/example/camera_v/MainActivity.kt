@@ -352,9 +352,10 @@ class MainActivity : FlutterActivity() {
         val sourceUri = Uri.parse(uriString)
         val bytes = loadPhotoBytes(uriString) ?: return false
         val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}.jpg"
+        val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, name)
-            put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+            put(MediaStore.Images.Media.MIME_TYPE, mimeType)
             put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
@@ -387,7 +388,15 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun sanitizeFolderName(folder: String): String {
-        return folder.trim()
+        val trimmed = folder.trim()
+        if (trimmed.startsWith(".") ||
+            trimmed.contains("..") ||
+            trimmed.contains("/") ||
+            trimmed.contains("\\")
+        ) {
+            return "CameraVSelected"
+        }
+        return trimmed
             .replace(Regex("""[^\p{L}\p{N}._ -]+"""), "_")
             .trim('.', ' ')
             .ifBlank { "CameraVSelected" }

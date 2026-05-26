@@ -222,6 +222,19 @@ class _GalleryPageState extends State<GalleryPage> {
     );
   }
 
+  Widget _buildGalleryHint() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Text(
+          '点击预览，长按选择图片',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -233,6 +246,7 @@ class _GalleryPageState extends State<GalleryPage> {
     return Column(
       children: [
         if (_selectionMode) _buildSelectionBar(),
+        if (!_selectionMode) _buildGalleryHint(),
         Expanded(
           child: RefreshIndicator(
             onRefresh: _load,
@@ -297,11 +311,6 @@ class _GalleryPageState extends State<GalleryPage> {
                                     fileName,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _selectionMode ? '点击选择/取消' : '点击预览，长按选择',
-                                    style: Theme.of(context).textTheme.bodySmall,
                                   ),
                                 ],
                               ),
