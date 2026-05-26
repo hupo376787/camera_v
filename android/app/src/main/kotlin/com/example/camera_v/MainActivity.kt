@@ -2,16 +2,20 @@ package com.example.camera_v
 
 import android.Manifest
 import android.content.BroadcastReceiver
-import android.content.ContentValues
+import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.Settings
+import android.util.Log
 import java.io.ByteArrayOutputStream
+import java.util.Locale
+import java.util.UUID
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.camera_v.service.FloatingCameraService
@@ -22,11 +26,14 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private companion object {
-        const val DEFAULT_COPY_FOLDER = "CameraVSelected"
+        const val TAG = "CameraVMainActivity"
+        const val REQUEST_PICK_COPY_FOLDER = 501
     }
 
     private lateinit var channel: MethodChannel
     private var eventReceiverRegistered = false
+    private var pendingCopyResult: MethodChannel.Result? = null
+    private var pendingCopyUris: List<String> = emptyList()
 
     private val eventReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -212,11 +219,10 @@ class MainActivity : FlutterActivity() {
                 result.success(deletePhotos(uris.mapNotNull { it as? String }))
             }
 
-            "copyPhotosToFolder" -> {
-                val args = call.arguments as? Map<*, *> ?: emptyMap<String, Any>()
-                val uris: List<*> = args["uris"] as? List<*> ?: emptyList<Any>()
-                val folder = args["folder"] as? String ?: DEFAULT_COPY_FOLDER
-                result.success(copyPhotosToFolder(uris.mapNotNull { it as? String }, folder))
+            "copyPhotosToPickedFolder" -> {
+                val uris: List<*> = (call.arguments as? Map<*, *>)?.get("uris") as? List<*>
+                    ?: emptyList<Any>()
+                pickFolderAndCopyPhotos(uris.mapNotNull { it as? String }, result)
             }
 
             "openOverlayPermission" -> {
@@ -252,6 +258,38 @@ class MainActivity : FlutterActivity() {
 
             else -> result.notImplemented()
         }
+    }
+
+    @Deprecated("Deprecated in Android API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode != REQUEST_PICK_COPY_FOLDER) {
+            super.onActivityResult(requestCode, resultCode, data)
+            return
+        }
+
+        val result = pendingCopyResult ?: return
+        val uris = pendingCopyUris
+        pendingCopyResult = null
+        pendingCopyUris = emptyList()
+
+        val treeUri = data?.data
+        if (resultCode != RESULT_OK || treeUri == null) {
+            result.success(null)
+            return
+        }
+
+        runCatching {
+            val flags = data.flags and
+                (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            if (flags != 0) {
+                contentResolver.takePersistableUriPermission(treeUri, flags)
+            } else {
+                Log.w(TAG, "System folder picker did not return persistable URI permission flags")
+            }
+        }.onFailure { error ->
+            Log.w(TAG, "Failed to persist folder URI permission", error)
+        }
+        result.success(copyPhotosToTree(uris, treeUri))
     }
 
     private fun validateStartServicePermissions(): String? {
@@ -296,6 +334,34 @@ class MainActivity : FlutterActivity() {
 
     private fun isFloatingServiceRunning(): Boolean {
         return FloatingCameraService.isServiceRunning()
+    }
+
+    private fun pickFolderAndCopyPhotos(uriStrings: List<String>, result: MethodChannel.Result) {
+        if (pendingCopyResult != null) {
+            result.error("folder_picker_busy", "文件夹选择器已打开，请先完成当前选择", null)
+            return
+        }
+        pendingCopyResult = result
+        pendingCopyUris = uriStrings
+
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(
+                Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                    Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION,
+            )
+        }
+        try {
+            startActivityForResult(intent, REQUEST_PICK_COPY_FOLDER)
+        } catch (error: ActivityNotFoundException) {
+            pendingCopyResult = null
+            pendingCopyUris = emptyList()
+            result.error(
+                "folder_picker_unavailable",
+                "无法打开系统文件夹选择器，请确认设备已安装文件管理器后重试",
+                null,
+            )
+        }
     }
 
     private fun loadGalleryUris(): List<String> {
@@ -346,35 +412,31 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun copyPhotosToFolder(uriStrings: List<String>, folder: String): Int {
-        val relativePath = "Pictures/${sanitizeFolderName(folder)}/"
+    private fun copyPhotosToTree(uriStrings: List<String>, treeUri: Uri): Int {
         return uriStrings.count { uriString ->
-            copyPhotoToFolder(uriString, relativePath)
+            copyPhotoToTree(uriString, treeUri)
         }
     }
 
-    private fun copyPhotoToFolder(uriString: String, relativePath: String): Boolean {
+    private fun copyPhotoToTree(uriString: String, treeUri: Uri): Boolean {
         val sourceUri = Uri.parse(uriString)
         val bytes = loadPhotoBytes(uriString) ?: return false
-        val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}.jpg"
         val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
-        val values = ContentValues().apply {
-            put(MediaStore.Images.Media.DISPLAY_NAME, name)
-            put(MediaStore.Images.Media.MIME_TYPE, mimeType)
-            put(MediaStore.Images.Media.RELATIVE_PATH, relativePath)
-            put(MediaStore.Images.Media.IS_PENDING, 1)
-        }
+        val name = displayName(sourceUri) ?: fallbackPhotoName(mimeType)
+        val targetFolderUri = DocumentsContract.buildDocumentUriUsingTree(
+            treeUri,
+            DocumentsContract.getTreeDocumentId(treeUri),
+        )
         return runCatching {
-            val targetUri = contentResolver.insert(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                values,
+            val targetUri = DocumentsContract.createDocument(
+                contentResolver,
+                targetFolderUri,
+                mimeType,
+                name,
             ) ?: return@runCatching false
             contentResolver.openOutputStream(targetUri)?.use { output ->
                 output.write(bytes)
             } ?: return@runCatching false
-            values.clear()
-            values.put(MediaStore.Images.Media.IS_PENDING, 0)
-            contentResolver.update(targetUri, values, null, null)
             true
         }.getOrDefault(false)
     }
@@ -392,23 +454,13 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun sanitizeFolderName(folder: String): String {
-        val trimmed = folder.trim()
-        if (trimmed.startsWith(".") ||
-            trimmed.endsWith(".") ||
-            trimmed.contains("..") ||
-            trimmed.contains("/") ||
-            trimmed.contains("\\")
-        ) {
-            return DEFAULT_COPY_FOLDER
+    private fun fallbackPhotoName(mimeType: String): String {
+        val extension = when (mimeType.lowercase(Locale.ROOT)) {
+            "image/png" -> "png"
+            "image/webp" -> "webp"
+            "image/heic", "image/heif" -> "heic"
+            else -> "jpg"
         }
-        val cleaned = trimmed.map { char ->
-            if (char.isLetterOrDigit() || char == '.' || char == '_' || char == '-' || char == ' ') {
-                char
-            } else {
-                '_'
-            }
-        }.joinToString("").trim()
-        return cleaned.ifBlank { DEFAULT_COPY_FOLDER }
+        return "IMG_${UUID.randomUUID()}.$extension"
     }
 }
