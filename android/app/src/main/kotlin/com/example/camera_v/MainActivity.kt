@@ -14,6 +14,7 @@ import android.provider.DocumentsContract
 import android.provider.MediaStore
 import android.provider.Settings
 import java.io.ByteArrayOutputStream
+import java.util.UUID
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.example.camera_v.service.FloatingCameraService
@@ -419,7 +420,7 @@ class MainActivity : FlutterActivity() {
     private fun copyPhotoToFolder(uriString: String, relativePath: String): Boolean {
         val sourceUri = Uri.parse(uriString)
         val bytes = loadPhotoBytes(uriString) ?: return false
-        val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}.jpg"
+        val name = displayName(sourceUri) ?: "IMG_${System.currentTimeMillis()}_${UUID.randomUUID()}.jpg"
         val mimeType = contentResolver.getType(sourceUri) ?: "image/jpeg"
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, name)
