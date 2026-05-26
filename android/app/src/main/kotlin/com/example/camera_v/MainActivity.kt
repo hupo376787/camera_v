@@ -388,7 +388,7 @@ class MainActivity : FlutterActivity() {
 
     private fun sanitizeFolderName(folder: String): String {
         return folder.trim()
-            .replace(Regex("""[\\/:*?"<>|]+"""), "_")
+            .replace(Regex("""[^\p{L}\p{N}._ -]+"""), "_")
             .trim('.', ' ')
             .ifBlank { "CameraVSelected" }
     }

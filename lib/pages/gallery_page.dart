@@ -128,7 +128,7 @@ class _GalleryPageState extends State<GalleryPage> {
     if (confirmed != true) return;
 
     final uris = _selectedUris.toList();
-    final deleted = await CameraBridge.deletePhotos(uris);
+    final deletedCount = await CameraBridge.deletePhotos(uris);
     if (!mounted) return;
     setState(() {
       _uris = _uris.where((uri) => !uris.contains(uri)).toList();
@@ -140,7 +140,7 @@ class _GalleryPageState extends State<GalleryPage> {
     await _load();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已删除 $deleted 张图片')),
+      SnackBar(content: Text('已删除 $deletedCount 张图片')),
     );
   }
 
@@ -175,14 +175,14 @@ class _GalleryPageState extends State<GalleryPage> {
     controller.dispose();
     if (folder == null || folder.trim().isEmpty) return;
 
-    final copied = await CameraBridge.copyPhotosToFolder(
+    final copiedCount = await CameraBridge.copyPhotosToFolder(
       _selectedUris.toList(),
       folder.trim(),
     );
     if (!mounted) return;
     setState(_selectedUris.clear);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('已复制 $copied 张图片到 Pictures/${folder.trim()}')),
+      SnackBar(content: Text('已复制 $copiedCount 张图片到 Pictures/${folder.trim()}')),
     );
   }
 
